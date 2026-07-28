@@ -102,6 +102,9 @@ export async function POST(
             case 'google':
                 apiKey = process.env.GOOGLE_API_KEY as string
                 break;
+            case 'zai':
+                apiKey = process.env.ZAI_API_KEY as string
+                break;
             default:
                 throw new Error('Unsupported LLM provider');
         }
@@ -201,6 +204,23 @@ export async function POST(
                     }).withConfig({metadata: {chatRoomId: id}, runName: 'chat'})
 
                     const chatStream = await gemini.stream(messages)
+                    for await (const part of chatStream) {
+                        const deltaContent = part.content.toString()
+                        if (deltaContent !== undefined) messageContent += deltaContent;
+                        controller.enqueue(`${JSON.stringify({content: messageContent})}\n`);
+                    }
+                } else if (llmProvider.providerId === 'zai') {
+                    // ZAI (Zhipu AI) — OpenAI-compatible endpoint, same client as OpenAI
+                    const llmProviderModelId = chatRoom.llmProviderModelId;
+                    if (!llmProviderModelId) throw new Error('No LLM model ID provided');
+                    const zai = new ChatOpenAI({
+                        apiKey,
+                        model: llmProviderModelId,
+                        configuration: {baseURL: llmProvider.apiURL},
+                        streaming: true,
+                    }).withConfig({metadata: {chatRoomId: id}, runName: 'chat'})
+
+                    const chatStream = await zai.stream(messages)
                     for await (const part of chatStream) {
                         const deltaContent = part.content.toString()
                         if (deltaContent !== undefined) messageContent += deltaContent;

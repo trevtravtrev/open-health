@@ -86,6 +86,16 @@ export async function GET(
                 })
             ),
         })
+    } else if (llmProvider.providerId === 'zai') {
+        // ZAI models are hardcoded — the GLM OpenAI-compatible surface does not
+        // expose a reliable /models list, and both values match the setup used in
+        // the bloggrr and MicroSAAS-BankStatementConverter projects.
+        return NextResponse.json<LLMProviderModelListResponse>({
+            llmProviderModels: [
+                {id: 'glm-5.2', name: 'GLM 5.2'},
+                {id: 'glm-4.6', name: 'GLM 4.6'},
+            ],
+        })
     } else if (llmProvider.providerId === 'ollama') {
         const apiURL = llmProvider.apiURL;
         const response = await fetch(`${apiURL}/api/tags`)

@@ -26,5 +26,12 @@
     "apiKey": "",
     "apiURL": "http://localhost:11434",
     "order": 3
+  },
+  {
+    "providerId": "zai",
+    "name": "ZAI (GLM)",
+    "apiKey": "",
+    "apiURL": "https://api.z.ai/api/coding/paas/v4",
+    "order": 4
   }
 ]
