@@ -228,11 +228,11 @@ export default function ChatSettingSideBar({chatRoomId}: ChatSettingSideBarProps
                         {selectedLLMProvider?.providerId !== 'ollama' && (
                             <div className="relative">
                                 <Input
-                                    type={showApiKey ? "text" : "password"}
+                                    type="text"
                                     placeholder={t('enterApiKey')}
                                     value={selectedLLMProvider?.apiKey || ''}
                                     onChange={(e) => onLLMProviderChange({apiKey: e.target.value})}
-                                    className="pr-16"
+                                    className={cn("pr-16", !showApiKey && "mask-text")}
                                 />
                                 <button
                                     className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-sm text-muted-foreground hover:text-foreground"

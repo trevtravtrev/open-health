@@ -250,12 +250,20 @@ export async function GET() {
     const session = await auth()
     if (!session || !session.user) return NextResponse.json({error: 'Unauthorized'}, {status: 401})
 
-    // Create personal info if it doesn't exist
-    const personalInfo = await prisma.healthData.findFirst({where: {authorId: session.user.id, type: 'PERSONAL_INFO'}})
-    if (personalInfo === null) {
-        await prisma.healthData.create({
-            data: {type: 'PERSONAL_INFO', authorId: session.user.id, data: {}}
-        })
+    // Auto-create the permanent, pinned sources once per user so they always
+    // exist and sit at the top of the list. PERSONAL_INFO = structured profile;
+    // PERSONAL_CONTEXT = free-text lifestyle notes the assistant can also edit.
+    for (const type of ['PERSONAL_INFO', 'PERSONAL_CONTEXT'] as const) {
+        const existing = await prisma.healthData.findFirst({where: {authorId: session.user.id, type}})
+        if (existing === null) {
+            await prisma.healthData.create({
+                data: {
+                    type,
+                    authorId: session.user.id,
+                    data: type === 'PERSONAL_CONTEXT' ? {content: ''} : {}
+                }
+            })
+        }
     }
 
     let healthDataList = await prisma.healthData.findMany({
@@ -273,12 +281,13 @@ export async function GET() {
         const t = Date.parse(s.length >= 10 ? s.slice(0, 10) : s);
         return Number.isNaN(t) ? null : t;
     };
+    // Permanent sources pin to the top in a fixed order (Personal Info, then
+    // Personal Context); everything else sorts by most recent exam date.
+    const PIN_ORDER: Record<string, number> = {'PERSONAL_INFO': 0, 'PERSONAL_CONTEXT': 1};
+    const pinRank = (type: string) => PIN_ORDER[type] ?? Number.MAX_SAFE_INTEGER;
     healthDataList = [...healthDataList].sort((a, b) => {
-        // Personal info is static — always pin it to the top.
-        const aPersonal = a.type === 'PERSONAL_INFO';
-        const bPersonal = b.type === 'PERSONAL_INFO';
-        if (aPersonal && !bPersonal) return -1;
-        if (bPersonal && !aPersonal) return 1;
+        const pa = pinRank(a.type), pb = pinRank(b.type);
+        if (pa !== pb) return pa - pb;
 
         // Everything else: most recent examination date first (descending).
         // Dated items come before undated ones; undated keep upload order.

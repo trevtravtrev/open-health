@@ -4,10 +4,10 @@
 
 import {Document, Page, pdfjs} from 'react-pdf';
 import React, {ChangeEvent, useCallback, useEffect, useMemo, useRef, useState} from 'react';
-import {Activity, ChevronLeft, ChevronRight, FileText, Loader2, Plus, Trash2, User} from 'lucide-react';
+import {Activity, ChevronLeft, ChevronRight, Eye, EyeOff, FileText, Loader2, NotebookPen, Pin, Plus, Sparkles, Trash2, User} from 'lucide-react';
 import {Button} from "@/components/ui/button";
 import {Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,} from "@/components/ui/dialog";
-import useSWR from "swr";
+import useSWR, {useSWRConfig} from "swr";
 import {HealthData, HealthDataCreateResponse, HealthDataListResponse} from "@/app/api/health-data/route";
 import DynamicForm from '../form/dynamic-form';
 import JSONEditor from '../form/json-editor';
@@ -90,6 +90,10 @@ const HealthDataType = {
     SYMPTOMS: {
         id: 'SYMPTOMS',
         name: 'Symptoms'
+    },
+    PERSONAL_CONTEXT: {
+        id: 'PERSONAL_CONTEXT',
+        name: 'Personal Context'
     }
 };
 
@@ -322,13 +326,17 @@ const HealthDataItem: React.FC<HealthDataItemProps> = ({healthData, isSelected, 
                 return <User className="h-5 w-5"/>;
             case HealthDataType.SYMPTOMS.id:
                 return <Activity className="h-5 w-5"/>;
+            case HealthDataType.PERSONAL_CONTEXT.id:
+                return <NotebookPen className="h-5 w-5"/>;
             default:
                 return <FileText className="h-5 w-5"/>;
         }
     };
 
     const getName = (type: string) => {
-        if (type === HealthDataType.PERSONAL_INFO.id) {
+        if (type === HealthDataType.PERSONAL_CONTEXT.id) {
+            return t('personalContext')
+        } else if (type === HealthDataType.PERSONAL_INFO.id) {
             return t('personalInfo')
         } else if (type === HealthDataType.SYMPTOMS.id && healthData.data) {
             const data = healthData.data as unknown as SymptomsData;
@@ -346,6 +354,9 @@ const HealthDataItem: React.FC<HealthDataItemProps> = ({healthData, isSelected, 
             .find((t) => t.id === type)?.name || '';
     };
 
+    const isPermanent = healthData.type === HealthDataType.PERSONAL_INFO.id || healthData.type === HealthDataType.PERSONAL_CONTEXT.id;
+    const isAssistantManaged = healthData.type === HealthDataType.PERSONAL_CONTEXT.id;
+
     return (
         <div
             className={`flex items-center justify-between p-2 rounded cursor-pointer transition-all
@@ -358,25 +369,160 @@ ${isSelected
                 <div className="flex-shrink-0">
                     {getIcon(healthData.type)}
                 </div>
-                <span className="truncate">{getName(healthData.type)}</span>
+                <div className="flex flex-col min-w-0">
+                    <span className="truncate flex items-center gap-1.5">
+                        {getName(healthData.type)}
+                        {isPermanent && (
+                            <Pin className="h-3 w-3 text-primary/70 shrink-0" aria-label="Pinned"/>
+                        )}
+                    </span>
+                    {isAssistantManaged && (
+                        <span className="text-[10px] uppercase tracking-wide text-primary/80 font-medium">
+                            {t('assistantManaged')}
+                        </span>
+                    )}
+                </div>
             </div>
             <div className="flex items-center gap-1">
                 {healthData.status === 'PARSING' && (
                     <Loader2 className="h-5 w-5 animate-spin"/>
                 )}
-                <Button
-                    variant="ghost"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onDelete(healthData.id);
-                    }}
-                >
-                    <Trash2 className="h-5 w-5"/>
-                </Button>
+                {!isPermanent && (
+                    <Button
+                        variant="ghost"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete(healthData.id);
+                        }}
+                    >
+                        <Trash2 className="h-5 w-5"/>
+                    </Button>
+                )}
             </div>
         </div>
     );
 };
+
+const PersonalContextEditor: React.FC<{ formData: Record<string, any>; setFormData: (d: Record<string, any>) => void; healthDataId: string }> = ({formData, setFormData, healthDataId}) => {
+    const t = useTranslations('SourceManagement')
+    const {mutate} = useSWRConfig()
+    const initial = typeof formData.content === 'string' ? formData.content : ''
+    const [value, setValue] = useState<string>(initial)
+    const [savedAt, setSavedAt] = useState<number | null>(null)
+    const [saving, setSaving] = useState(false)
+
+    // Last value we successfully persisted — lets us tell clean from dirty and
+    // skip no-op saves. Kept in refs so the unmount flush reads the latest value.
+    const persistedRef = useRef(initial)
+    const valueRef = useRef(value)
+    const formDataRef = useRef(formData)
+    valueRef.current = value
+    formDataRef.current = formData
+
+    // Resync from the prop when the note changes externally (e.g. an assistant
+    // appended a line), but only if it differs from our last save so we don't
+    // clobber in-flight edits.
+    useEffect(() => {
+        const incoming = typeof formData.content === 'string' ? formData.content : ''
+        if (incoming !== persistedRef.current) {
+            setValue(incoming)
+            persistedRef.current = incoming
+        }
+    }, [formData])
+
+    const persist = useCallback(async (next: string) => {
+        if (next === persistedRef.current) return
+        setSaving(true)
+        try {
+            await setFormData({...formData, content: next})
+            persistedRef.current = next
+            setSavedAt(Date.now())
+        } finally {
+            setSaving(false)
+        }
+    }, [formData, setFormData])
+
+    // Auto-save shortly after typing stops.
+    useEffect(() => {
+        if (value === persistedRef.current) return
+        const id = setTimeout(() => {
+            void persist(value)
+        }, 700)
+        return () => clearTimeout(id)
+    }, [value, persist])
+
+    // Flush unsaved edits on unmount (e.g. clicking another source tears this
+    // editor down before blur fires). Writes straight to the API so it can't race
+    // with the selection change in shared form state, then updates the SWR cache
+    // so navigating right back shows the saved text.
+    useEffect(() => {
+        return () => {
+            const pending = valueRef.current
+            if (pending !== persistedRef.current) {
+                const body = {data: {...formDataRef.current, content: pending}}
+                void (async () => {
+                    try {
+                        await fetch(`/api/health-data/${healthDataId}`, {
+                            method: 'PATCH',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify(body)
+                        })
+                        await mutate('/api/health-data', (cur: any) => cur?.healthDataList
+                            ? {healthDataList: cur.healthDataList.map((s: any) => s.id === healthDataId
+                                ? {...s, data: {...(s.data || {}), content: pending}}
+                                : s)}
+                            : cur, {revalidate: false})
+                    } catch {
+                        /* best-effort flush */
+                    }
+                })()
+                persistedRef.current = pending
+            }
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
+
+    const dirty = value !== persistedRef.current
+
+    return (
+        <div className="h-full flex flex-col gap-3">
+            <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                    <h2 className="text-base font-semibold flex items-center gap-2">
+                        <NotebookPen className="h-4 w-4 text-primary"/>
+                        {t('personalContext')}
+                    </h2>
+                    <p className="text-sm text-muted-foreground mt-1">{t('personalContextDescription')}</p>
+                </div>
+                <Button
+                    size="sm"
+                    variant={dirty ? 'default' : 'outline'}
+                    disabled={!dirty || saving}
+                    onClick={() => persist(value)}
+                    className="shrink-0"
+                >
+                    {saving && <Loader2 className="h-4 w-4 animate-spin mr-1.5"/>}
+                    {saving ? t('saving') : t('save')}
+                </Button>
+            </div>
+            <textarea
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+                onBlur={() => persist(value)}
+                placeholder={t('personalContextPlaceholder')}
+                className="flex-1 min-h-[300px] w-full resize-none rounded-lg border border-border bg-background p-4 text-sm leading-relaxed text-foreground/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring font-mono"
+            />
+            <div className="flex items-center justify-between">
+                <span className="inline-flex items-center gap-1 text-xs text-primary">
+                    <Sparkles className="h-3.5 w-3.5"/> {t('assistantManaged')}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                    {saving ? '' : dirty ? t('unsaved') : savedAt ? t('saved') : ''}
+                </span>
+            </div>
+        </div>
+    )
+}
 
 const HealthDataPreview = ({healthData, formData, setFormData, setHealthData}: HealthDataPreviewProps) => {
     const t = useTranslations('SourceManagement')
@@ -615,6 +761,10 @@ const HealthDataPreview = ({healthData, formData, setFormData, setHealthData}: H
         document.querySelector('#test-result')?.scrollTo(0, 0);
         document.querySelector('#pdf')?.scrollTo(0, 0);
     }, [page]);
+
+    if (healthData?.type === HealthDataType.PERSONAL_CONTEXT.id) {
+        return <PersonalContextEditor formData={formData} setFormData={setFormData} healthDataId={healthData.id}/>
+    }
 
     return (
         <>
@@ -909,11 +1059,13 @@ export default function SourceAddScreen() {
     const [visionParserModel, setVisionParserModel] = useState<{ value: string; label: string }>()
     const [visionParserApiKey, setVisionParserApiKey] = useState<string>('')
     const [visionParserApiUrl, setVisionParserApiUrl] = useState<string>('')
+    const [showVisionKey, setShowVisionKey] = useState(false)
 
     // Document Parser
     const [documentParser, setDocumentParser] = useState<{ value: string; label: string }>()
     const [documentParserModel, setDocumentParserModel] = useState<{ value: string; label: string }>()
     const [documentParserApiKey, setDocumentParserApiKey] = useState<string>('')
+    const [showDocumentKey, setShowDocumentKey] = useState(false)
 
     const {data: healthDataList, mutate} = useSWR<HealthDataListResponse>(
         '/api/health-data',
@@ -1307,15 +1459,27 @@ export default function SourceAddScreen() {
                                                     {visionDataList?.visions?.find(v => v.name === visionParser?.value)?.apiKeyRequired && (
                                                         <div className="space-y-2">
                                                             <label className="text-sm font-medium">{t('apiKey')}</label>
-                                                            <input
-                                                                type="password"
-                                                                aria-autocomplete={'none'}
-                                                                autoComplete={'off'}
-                                                                placeholder={t('enterYourAPIKey')}
-                                                                className="w-full p-2 border border-border bg-background text-foreground rounded-md text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                                                                value={visionParserApiKey}
-                                                                onChange={(e) => setVisionParserApiKey(e.target.value)}
-                                                            />
+                                                            <div className="relative">
+                                                                <input
+                                                                    type="text"
+                                                                    aria-autocomplete={'none'}
+                                                                    autoComplete={'off'}
+                                                                    spellCheck={false}
+                                                                    placeholder={t('enterYourAPIKey')}
+                                                                    className={cn("w-full p-2 pr-9 border border-border bg-background text-foreground rounded-md text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", !showVisionKey && "mask-text")}
+                                                                    value={visionParserApiKey}
+                                                                    onChange={(e) => setVisionParserApiKey(e.target.value)}
+                                                                />
+                                                                <button
+                                                                    type="button"
+                                                                    tabIndex={-1}
+                                                                    onClick={() => setShowVisionKey(v => !v)}
+                                                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                                                    aria-label={showVisionKey ? 'Hide API key' : 'Show API key'}
+                                                                >
+                                                                    {showVisionKey ? <EyeOff className="h-4 w-4"/> : <Eye className="h-4 w-4"/>}
+                                                                </button>
+                                                            </div>
                                                         </div>
                                                     )}
 
@@ -1390,13 +1554,27 @@ export default function SourceAddScreen() {
                                                     {documentDataList?.documents?.find(v => v.name === documentParser?.value)?.apiKeyRequired && (
                                                         <div className="space-y-2">
                                                             <label className="text-sm font-medium">{t('apiKey')}</label>
-                                                            <input
-                                                                type="password"
-                                                                placeholder={t('enterYourAPIKey')}
-                                                                className="w-full p-2 border border-border bg-background text-foreground rounded-md text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                                                                value={documentParserApiKey}
-                                                                onChange={(e) => setDocumentParserApiKey(e.target.value)}
-                                                            />
+                                                            <div className="relative">
+                                                                <input
+                                                                    type="text"
+                                                                    aria-autocomplete={'none'}
+                                                                    autoComplete={'off'}
+                                                                    spellCheck={false}
+                                                                    placeholder={t('enterYourAPIKey')}
+                                                                    className={cn("w-full p-2 pr-9 border border-border bg-background text-foreground rounded-md text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", !showDocumentKey && "mask-text")}
+                                                                    value={documentParserApiKey}
+                                                                    onChange={(e) => setDocumentParserApiKey(e.target.value)}
+                                                                />
+                                                                <button
+                                                                    type="button"
+                                                                    tabIndex={-1}
+                                                                    onClick={() => setShowDocumentKey(v => !v)}
+                                                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                                                    aria-label={showDocumentKey ? 'Hide API key' : 'Show API key'}
+                                                                >
+                                                                    {showDocumentKey ? <EyeOff className="h-4 w-4"/> : <Eye className="h-4 w-4"/>}
+                                                                </button>
+                                                            </div>
                                                         </div>
                                                     )}
                                                 </ConditionalDeploymentEnv>

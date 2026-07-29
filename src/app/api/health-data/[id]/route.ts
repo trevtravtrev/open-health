@@ -38,6 +38,11 @@ export async function DELETE(
     {params}: { params: Promise<{ id: string }> }
 ) {
     const {id} = await params
+    // Permanent sources (Personal Info, Personal Context) can never be deleted.
+    const existing = await prisma.healthData.findUnique({where: {id}, select: {type: true}})
+    if (existing && ['PERSONAL_INFO', 'PERSONAL_CONTEXT'].includes(existing.type)) {
+        return NextResponse.json({error: 'This source is permanent and cannot be deleted'}, {status: 403})
+    }
     await prisma.healthData.delete({where: {id}})
     return NextResponse.json({})
 }

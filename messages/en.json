@@ -103,7 +103,15 @@
     "selectModel": "Select Model",
     "apiKey": "API Key",
     "enterYourAPIKey": "Enter your API key",
-    "enterYourAPIUrl": "Enter your API URL"
+    "enterYourAPIUrl": "Enter your API URL",
+    "personalContext": "Personal Context",
+    "personalContextDescription": "Durable lifestyle facts (devices, therapies, routines, supplements). Your assistants read this every chat and can add to it.",
+    "personalContextPlaceholder": "e.g. Infrared sauna 4x/week (~20 min). Red light therapy device, nightly 10 min. Creatine 5g daily. Works night shift.",
+    "assistantManaged": "Assistant-managed",
+    "saved": "Saved",
+    "save": "Save",
+    "saving": "Saving…",
+    "unsaved": "Unsaved changes"
   },
   "DynamicForm": {
     "selectPlaceholder": "Select..."
