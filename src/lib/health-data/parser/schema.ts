@@ -9,8 +9,14 @@ import {z} from "zod";
  *   name — nothing is forced into a wrong bucket (e.g. QuantiFERON-TB -> hiv) and
  *   nothing is dropped for being "unknown".
  */
+// value is .nullable() as a SAFETY VALVE: GLM-4.6V occasionally emits "value":
+// null for a test it listed but couldn't read. A strict z.string() makes LangChain's
+// structured-output validation throw OUTPUT_PARSING_FAILURE INSIDE the vision parse
+// (before pdf.ts gets the page) — which crashes the WHOLE report for one bad field.
+// Null-bearing entries are dropped by normalizeTestResult before storage, so this
+// only prevents crashes; it never stores a null value.
 const TestValueSchema = z.object({
-    value: z.string().describe("The patient's result as a string"),
+    value: z.string().nullable().describe("The patient's result as a string (null only if unreadable)"),
     unit: z.string().nullable().optional().describe("Unit as printed, or null"),
     reference_range: z.string().nullable().optional().describe("Reference/normal range as printed, or null"),
     abnormal: z.boolean().nullable().optional().describe("True if flagged abnormal/H/L on the report, else false/null"),

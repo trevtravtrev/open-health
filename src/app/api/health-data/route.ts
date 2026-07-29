@@ -67,41 +67,61 @@ interface ParseJob {
 }
 
 async function runParse(job: ParseJob) {
-    try {
-        const {data, pages, ocrResults} = await parseHealthData({
-            file: job.filePath,
-            visionParser: job.visionParser ? {
-                parser: job.visionParser as string,
-                model: job.visionParserModel as string,
-                apiKey: job.visionParserApiKey as string,
-                apiUrl: job.visionParserApiUrl ? job.visionParserApiUrl as string : undefined
-            } : undefined,
-            documentParser: job.documentParser ? {
-                parser: job.documentParser as string,
-                model: job.documentParserModel as string,
-                apiKey: job.documentParserApiKey as string
-            } : undefined
-        });
+    // Whole-job retry. parseHealthData already retries each Docling/pdf2pic
+    // operation individually (5 attempts), but under a 20+ file queue a
+    // transient infra failure (Docling "write EOF", pdf2pic gm subprocess drop)
+    // or a one-off bad model output can still slip through those inner retries.
+    // Re-running the entire job a couple of times turns those into recoveries
+    // instead of permanent ERROR records the user has to re-upload by hand.
+    const MAX_ATTEMPTS = 3;
+    let lastError: unknown;
 
-        await prisma.healthData.update({
-            where: {id: job.id},
-            data: {
-                status: 'COMPLETED',
-                metadata: JSON.parse(JSON.stringify({ocr: ocrResults[0], dataPerPage: pages[0]})),
-                data: {...job.baseData, ...data[0]}
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+        try {
+            const {data, pages, ocrResults} = await parseHealthData({
+                file: job.filePath,
+                visionParser: job.visionParser ? {
+                    parser: job.visionParser as string,
+                    model: job.visionParserModel as string,
+                    apiKey: job.visionParserApiKey as string,
+                    apiUrl: job.visionParserApiUrl ? job.visionParserApiUrl as string : undefined
+                } : undefined,
+                documentParser: job.documentParser ? {
+                    parser: job.documentParser as string,
+                    model: job.documentParserModel as string,
+                    apiKey: job.documentParserApiKey as string
+                } : undefined
+            });
+
+            await prisma.healthData.update({
+                where: {id: job.id},
+                data: {
+                    status: 'COMPLETED',
+                    metadata: JSON.parse(JSON.stringify({ocr: ocrResults[0], dataPerPage: pages[0]})),
+                    data: {...job.baseData, ...data[0]}
+                }
+            });
+            return; // success — stop retrying
+        } catch (error) {
+            lastError = error;
+            console.error(`Error processing file (attempt ${attempt + 1}/${MAX_ATTEMPTS}):`, error);
+            // Back off (5s, 10s) before the next whole-job attempt so a transient
+            // Docling/socket drop has time to clear.
+            if (attempt < MAX_ATTEMPTS - 1) {
+                await new Promise(r => setTimeout(r, 5000 * (attempt + 1)));
             }
-        });
-    } catch (error) {
-        console.error('Error processing file:', error);
-        const parsingLogs: string[] = [`Error: ${error instanceof Error ? error.message : 'Unknown error'}`];
-        await prisma.healthData.update({
-            where: {id: job.id},
-            data: {
-                status: 'ERROR',
-                data: {...job.baseData, parsingLogs},
-            }
-        }).catch(() => {});
+        }
     }
+
+    // All attempts failed — record the last error.
+    const parsingLogs: string[] = [`Error: ${lastError instanceof Error ? lastError.message : 'Unknown error'}`];
+    await prisma.healthData.update({
+        where: {id: job.id},
+        data: {
+            status: 'ERROR',
+            data: {...job.baseData, parsingLogs},
+        }
+    }).catch(() => {});
 }
 
 export async function POST(
