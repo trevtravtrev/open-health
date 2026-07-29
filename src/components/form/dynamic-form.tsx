@@ -27,13 +27,13 @@ export default function DynamicForm({fields, data, onChange}: DynamicFormProps) 
                     <label className="text-sm font-medium">{field.label}</label>
                     {field.type === 'textarea' ? (
                         <textarea
-                            className={`w-full p-2 border rounded ${field.key === 'description' ? 'min-h-[200px]' : 'min-h-[100px]'}`}
+                            className={`w-full p-2 border border-border bg-background text-foreground rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${field.key === 'description' ? 'min-h-[200px]' : 'min-h-[100px]'}`}
                             value={data[field.key] || ''}
                             onChange={(e) => onChange(field.key, e.target.value)}
                         />
                     ) : field.type === 'select' ? (
                         <select
-                            className="w-full p-2 border rounded"
+                            className="w-full p-2 border border-border bg-background text-foreground rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             value={data[field.key] || field.defaultValue || ''}
                             onChange={(e) => onChange(field.key, e.target.value)}
                         >
@@ -50,7 +50,7 @@ export default function DynamicForm({fields, data, onChange}: DynamicFormProps) 
                                 <div key={subField.key} className="flex-1">
                                     {subField.type === 'select' ? (
                                         <select
-                                            className="w-full p-2 border rounded"
+                                            className="w-full p-2 border border-border bg-background text-foreground rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                             value={data[field.key]?.[subField.key] || subField.defaultValue || ''}
                                             onChange={(e) => {
                                                 const currentValue = data[field.key] || {};
@@ -75,7 +75,7 @@ export default function DynamicForm({fields, data, onChange}: DynamicFormProps) 
                                         <input
                                             type={subField.type}
                                             placeholder={subField.placeholder}
-                                            className="w-full p-2 border rounded"
+                                            className="w-full p-2 border border-border bg-background text-foreground rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                             value={data[field.key]?.[subField.key] || ''}
                                             onChange={(e) => {
                                                 const currentValue = data[field.key] || {};
@@ -97,7 +97,7 @@ export default function DynamicForm({fields, data, onChange}: DynamicFormProps) 
                     ) : (
                         <input
                             type={field.type}
-                            className="w-full p-2 border rounded"
+                            className="w-full p-2 border border-border bg-background text-foreground rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             value={data[field.key] || ''}
                             onChange={(e) => onChange(field.key, e.target.value)}
                         />

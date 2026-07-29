@@ -52,12 +52,12 @@ export default function MedicalRecords({value, onValueChange}: MedicalRecordsPro
         <div className="space-y-8">
             <div className="text-center mb-6">
                 <h2 className="text-2xl font-bold">{t('title')}</h2>
-                <p className="text-gray-600">{t('description')}</p>
+                <p className="text-foreground/80">{t('description')}</p>
             </div>
 
             <div
                 className={`border-2 border-dashed rounded-lg p-8 text-center ${
-                    dragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
+                    dragActive ? 'border-primary bg-primary/10' : 'border-border'
                 }`}
                 onDragEnter={handleDrag}
                 onDragLeave={handleDrag}
@@ -67,7 +67,7 @@ export default function MedicalRecords({value, onValueChange}: MedicalRecordsPro
                 <div className="space-y-4">
                     <div className="flex items-center justify-center">
                         <svg
-                            className="w-12 h-12 text-gray-400"
+                            className="w-12 h-12 text-muted-foreground"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -82,7 +82,7 @@ export default function MedicalRecords({value, onValueChange}: MedicalRecordsPro
                     </div>
                     <div>
                         <p className="text-lg font-medium">{t('dragDrop.title')}</p>
-                        <p className="text-sm text-gray-500">{t('dragDrop.or')}</p>
+                        <p className="text-sm text-muted-foreground">{t('dragDrop.or')}</p>
                     </div>
                     <div>
                         <Label htmlFor="file-upload" className="cursor-pointer">
@@ -100,7 +100,7 @@ export default function MedicalRecords({value, onValueChange}: MedicalRecordsPro
                             </Button>
                         </Label>
                     </div>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-muted-foreground">
                         {t('dragDrop.supportedFormats')}
                     </p>
                 </div>
@@ -113,14 +113,14 @@ export default function MedicalRecords({value, onValueChange}: MedicalRecordsPro
                         {value.map((file, index) => (
                             <div
                                 key={index}
-                                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                                className="flex items-center justify-between p-3 bg-muted rounded-lg"
                             >
                                 <span className="truncate">{file.name}</span>
                                 <Button
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => removeFile(index)}
-                                    className="text-red-500 hover:text-red-700"
+                                    className="text-destructive hover:text-destructive/80"
                                 >
                                     Remove
                                 </Button>

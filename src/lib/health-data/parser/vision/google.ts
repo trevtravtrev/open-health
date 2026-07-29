@@ -68,6 +68,7 @@ export class GoogleVisionParser extends BaseVisionParser {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const cleaned: Record<string, any> = {};
         for (const [k, v] of Object.entries(out?.test_result ?? {})) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             if (v && typeof v === 'object' && String((v as any).value ?? '').trim() !== '') {
                 cleaned[k] = v;
             }

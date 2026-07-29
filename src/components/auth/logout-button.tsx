@@ -7,7 +7,7 @@ export default function LogoutButton() {
         <Button
             onClick={() => signOut()}
             variant="ghost"
-            className="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+            className="text-muted-foreground hover:text-foreground"
         >
             <LogOut className="w-4 h-4" />
         </Button>

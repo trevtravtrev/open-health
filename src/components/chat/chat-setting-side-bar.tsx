@@ -192,7 +192,7 @@ export default function ChatSettingSideBar({chatRoomId}: ChatSettingSideBarProps
                         <SelectTrigger>
                             <SelectValue placeholder={t('selectCompany')}/>
                         </SelectTrigger>
-                        <SelectContent className={cn('bg-white')}>
+                        <SelectContent className={cn('bg-popover')}>
                             {llmProvidersData?.llmProviders.map((provider) => <SelectItem
                                 key={provider.id}
                                 value={provider.id}>{provider.name}</SelectItem>)}
@@ -203,7 +203,7 @@ export default function ChatSettingSideBar({chatRoomId}: ChatSettingSideBarProps
                         <SelectTrigger>
                             <SelectValue placeholder={t('selectModel')}/>
                         </SelectTrigger>
-                        <SelectContent className={cn('bg-white')}>
+                        <SelectContent className={cn('bg-popover')}>
                             {llmProviderModels.map((model) => (
                                 <SelectItem key={model.id} value={model.id}>
                                     {model.name}
@@ -211,7 +211,7 @@ export default function ChatSettingSideBar({chatRoomId}: ChatSettingSideBarProps
                             ))}
 
                             {llmProviderModels.length === 0 && (
-                                <div className="p-2 text-sm text-gray-500">{t('noModelsFound')}</div>
+                                <div className="p-2 text-sm text-muted-foreground">{t('noModelsFound')}</div>
                             )}
                         </SelectContent>
                     </Select>
@@ -235,7 +235,7 @@ export default function ChatSettingSideBar({chatRoomId}: ChatSettingSideBarProps
                                     className="pr-16"
                                 />
                                 <button
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-sm text-gray-500 hover:text-gray-700"
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-sm text-muted-foreground hover:text-foreground"
                                     onClick={() => setShowApiKey(!showApiKey)}
                                 >
                                     {showApiKey ? t('hide') : t('show')}
@@ -265,7 +265,7 @@ export default function ChatSettingSideBar({chatRoomId}: ChatSettingSideBarProps
                 <div className="flex items-center justify-between">
                     <h4 className="text-sm font-medium">{t('assistantMode')}</h4>
                     <Link href="/assistant-modes/add"
-                          className="inline-flex items-center text-xs text-blue-600 hover:text-blue-800">
+                          className="inline-flex items-center text-xs text-primary hover:text-primary/80">
                         <Plus className="mr-1 h-3 w-3"/>
                         {t('addAssistant')}
                     </Link>
@@ -275,14 +275,14 @@ export default function ChatSettingSideBar({chatRoomId}: ChatSettingSideBarProps
                         <button
                             key={assistantMode.id}
                             className={`w-full p-3 rounded-lg text-left border transition-colors
-                        ${selectedAssistantMode?.id === assistantMode.id ? 'bg-white border-gray-300' :
-                                'border-transparent hover:bg-gray-100'}`}
+                        ${selectedAssistantMode?.id === assistantMode.id ? 'bg-card border-border' :
+                                'border-transparent hover:bg-muted'}`}
                             onClick={async () => {
                                 await onChangeChatRoom({assistantModeId: assistantMode.id});
                             }}
                         >
                             <div className="text-sm font-medium">{assistantMode.name}</div>
-                            <div className="text-xs text-gray-500">{assistantMode.description}</div>
+                            <div className="text-xs text-muted-foreground">{assistantMode.description}</div>
                         </button>
                     ))}
                 </div>

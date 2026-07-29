@@ -130,7 +130,7 @@ export default function OnboardingPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white flex items-center justify-center p-4">
+        <div className="min-h-screen bg-gradient-to-b from-background to-card flex items-center justify-center p-4">
             <Card className="w-full max-w-3xl">
                 <CardContent className="p-6">
                     {currentStep > 1 && (

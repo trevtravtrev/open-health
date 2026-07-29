@@ -91,17 +91,17 @@ export default function LoginScreen() {
                         duration: 0.8,
                         ease: "easeInOut",
                     }}
-                    className="w-full max-w-sm space-y-6 p-8 bg-zinc-900/40 backdrop-blur-md rounded-xl shadow-2xl"
+                    className="w-full max-w-sm space-y-6 p-8 bg-card/50 backdrop-blur-md rounded-xl shadow-2xl"
                 >
                     {error && (
-                        <div className="text-red-500 text-sm text-center">
+                        <div className="text-destructive text-sm text-center">
                             {error}
                         </div>
                     )}
                     <form className="space-y-6" onSubmit={handleSubmit}>
                         <div className="rounded-md shadow-sm space-y-4">
                             <div>
-                                <label htmlFor="username" className="block text-sm font-medium text-zinc-300">
+                                <label htmlFor="username" className="block text-sm font-medium text-foreground">
                                     {t('username')}
                                 </label>
                                 <input
@@ -109,7 +109,7 @@ export default function LoginScreen() {
                                     name="username"
                                     type={isLogin ? 'text' : 'email'}
                                     required
-                                    className="appearance-none rounded-lg relative block w-full px-3 py-2 border border-zinc-700/50 bg-zinc-800/30 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:border-zinc-500"
+                                    className="appearance-none rounded-lg relative block w-full px-3 py-2 border border-border bg-background/40 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
                                     placeholder={t('usernamePlaceholder')}
                                     value={username}
                                     onChange={(e) => setUsername(e.target.value)}
@@ -117,7 +117,7 @@ export default function LoginScreen() {
                                 />
                             </div>
                             <div>
-                                <label htmlFor="password" className="block text-sm font-medium text-zinc-300">
+                                <label htmlFor="password" className="block text-sm font-medium text-foreground">
                                     {t('password')}
                                 </label>
                                 <input
@@ -125,7 +125,7 @@ export default function LoginScreen() {
                                     name="password"
                                     type="password"
                                     required
-                                    className="appearance-none rounded-lg relative block w-full px-3 py-2 border border-zinc-700/50 bg-zinc-800/30 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:border-zinc-500"
+                                    className="appearance-none rounded-lg relative block w-full px-3 py-2 border border-border bg-background/40 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
                                     placeholder={t('passwordPlaceholder')}
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
@@ -136,7 +136,7 @@ export default function LoginScreen() {
                         <div>
                             <button
                                 type="submit"
-                                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-lg text-zinc-900 bg-white hover:bg-zinc-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-zinc-500 transition-colors duration-200"
+                                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-lg text-primary-foreground bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring transition-colors duration-200"
                             >
                                 {isLogin ? t('signIn') : t('signUp')}
                             </button>
@@ -147,7 +147,7 @@ export default function LoginScreen() {
                         <button
                             type="button"
                             onClick={() => setIsLogin(!isLogin)}
-                            className="text-sm text-zinc-400 hover:text-zinc-300 font-medium focus:outline-none"
+                            className="text-sm text-muted-foreground hover:text-foreground font-medium focus:outline-none"
                         >
                             {isLogin ? t('needSignUp') : t('alreadyHaveAccount')}
                         </button>

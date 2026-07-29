@@ -3,58 +3,62 @@
 @tailwind utilities;
 
 body {
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-    --radius: 0.5rem;
+    /* "clinical ink" base — dark by default (no light mode) */
+    --background: 217 30% 5%;
+    --foreground: 217 23% 93%;
+    --card: 214 24% 9%;
+    --card-foreground: 217 23% 93%;
+    --popover: 214 24% 9%;
+    --popover-foreground: 217 23% 93%;
+    --primary: 173 58% 51%;
+    --primary-foreground: 172 62% 8%;
+    --secondary: 215 22% 11%;
+    --secondary-foreground: 217 23% 93%;
+    --muted: 215 22% 11%;
+    --muted-foreground: 213 14% 65%;
+    --accent: 215 22% 14%;
+    --accent-foreground: 217 23% 93%;
+    --destructive: 351 95% 72%;
+    --destructive-foreground: 217 23% 93%;
+    --border: 213 23% 17%;
+    --input: 213 23% 17%;
+    --ring: 173 58% 51%;
+    --user-surface: 172 50% 11%;
+    --chart-1: 173 58% 51%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+    --radius: 0.65rem;
   }
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --chart-1: 220 70% 50%;
+    /* identical to :root — kept so existing dark: variants and aurora dark:invert-0 resolve */
+    --background: 217 30% 5%;
+    --foreground: 217 23% 93%;
+    --card: 214 24% 9%;
+    --card-foreground: 217 23% 93%;
+    --popover: 214 24% 9%;
+    --popover-foreground: 217 23% 93%;
+    --primary: 173 58% 51%;
+    --primary-foreground: 172 62% 8%;
+    --secondary: 215 22% 11%;
+    --secondary-foreground: 217 23% 93%;
+    --muted: 215 22% 11%;
+    --muted-foreground: 213 14% 65%;
+    --accent: 215 22% 14%;
+    --accent-foreground: 217 23% 93%;
+    --destructive: 351 95% 72%;
+    --destructive-foreground: 217 23% 93%;
+    --border: 213 23% 17%;
+    --input: 213 23% 17%;
+    --ring: 173 58% 51%;
+    --user-surface: 172 50% 11%;
+    --chart-1: 173 58% 51%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
@@ -69,4 +73,75 @@ body {
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* react-select dark theming (classNamePrefix="select"). The library injects
+   light inline styles via emotion, so !important is required to override them
+   and make the parser/model dropdowns match the dark UI. */
+.select__control {
+  background-color: hsl(var(--background)) !important;
+  border-color: hsl(var(--border)) !important;
+  color: hsl(var(--foreground)) !important;
+  min-height: 38px;
+}
+.select__control--is-disabled {
+  background-color: hsl(var(--muted)) !important;
+  color: hsl(var(--muted-foreground)) !important;
+}
+.select__control--is-focused,
+.select__control:hover {
+  border-color: hsl(var(--primary)) !important;
+  box-shadow: 0 0 0 1px hsl(var(--primary)) !important;
+}
+.select__value-container,
+.select__single-value,
+.select__input {
+  color: hsl(var(--foreground)) !important;
+}
+.select__placeholder {
+  color: hsl(var(--muted-foreground)) !important;
+}
+.select__indicator {
+  color: hsl(var(--muted-foreground)) !important;
+}
+.select__indicator:hover {
+  color: hsl(var(--foreground)) !important;
+}
+.select__menu {
+  background-color: hsl(var(--popover)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+}
+.select__menu-list {
+  padding: 4px;
+}
+.select__option {
+  background-color: transparent !important;
+  color: hsl(var(--foreground)) !important;
+  border-radius: calc(var(--radius) - 4px);
+}
+.select__option--is-focused {
+  background-color: hsl(var(--accent)) !important;
+  color: hsl(var(--accent-foreground)) !important;
+}
+.select__option--is-selected {
+  background-color: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+}
+.select__input-container {
+  color: hsl(var(--foreground)) !important;
+}
+
+/* Markdown table polish (used by react-markdown .prose). Zebra striping +
+   hover so lab/result tables read as real tables on the dark surface. */
+.prose table {
+  border-spacing: 0;
+}
+.prose table thead th {
+  border-bottom: 2px solid hsl(var(--primary) / 0.4);
+}
+.prose table tbody tr:nth-child(even) {
+  background-color: hsl(var(--primary) / 0.08);
+}
+.prose table tbody tr:hover {
+  background-color: hsl(var(--primary) / 0.14);
 }

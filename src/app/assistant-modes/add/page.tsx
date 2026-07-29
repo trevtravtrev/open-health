@@ -63,12 +63,12 @@ export default function AddAssistantPage() {
     };
 
     return (
-        <div className="min-h-screen bg-white">
+        <div className="min-h-screen bg-background">
             <div className="container mx-auto py-8 px-4 max-w-3xl">
                 <div className="mb-6">
                     <button
                         onClick={handleCancel}
-                        className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900"
+                        className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
                     >
                         <ArrowLeft className="mr-2 h-4 w-4"/>
                         {t('backToChat')}
@@ -77,13 +77,13 @@ export default function AddAssistantPage() {
 
                 <div className="mb-8">
                     <h1 className="text-2xl font-bold">{t('addNewAssistant')}</h1>
-                    <p className="text-gray-600 mt-1">{t('createCustomAssistant')}</p>
+                    <p className="text-muted-foreground mt-1">{t('createCustomAssistant')}</p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="space-y-4">
                         <div>
-                            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                            <label htmlFor="name" className="block text-sm font-medium text-foreground mb-1">
                                 {t('assistantName')}
                             </label>
                             <Input
@@ -98,7 +98,7 @@ export default function AddAssistantPage() {
                         </div>
 
                         <div>
-                            <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+                            <label htmlFor="description" className="block text-sm font-medium text-foreground mb-1">
                                 {t('description')}
                             </label>
                             <Textarea
@@ -110,7 +110,7 @@ export default function AddAssistantPage() {
                                 className="w-full"
                                 rows={3}
                             />
-                            <p className="text-xs text-gray-500 mt-1">
+                            <p className="text-xs text-muted-foreground mt-1">
                                 {t('descriptionHelp')}
                             </p>
                         </div>
@@ -124,17 +124,17 @@ export default function AddAssistantPage() {
                             />
                             <div>
                                 <label htmlFor="isPublic"
-                                       className="block text-sm font-medium text-gray-700 cursor-pointer">
+                                       className="block text-sm font-medium text-foreground cursor-pointer">
                                     {t('isPublic')}
                                 </label>
-                                <p className="text-xs text-gray-500 mt-1">
+                                <p className="text-xs text-muted-foreground mt-1">
                                     {t('isPublicHelp')}
                                 </p>
                             </div>
                         </div>
 
                         <div>
-                            <label htmlFor="systemPrompt" className="block text-sm font-medium text-gray-700 mb-1">
+                            <label htmlFor="systemPrompt" className="block text-sm font-medium text-foreground mb-1">
                                 {t('systemPrompt')}
                             </label>
                             <Textarea
@@ -146,13 +146,13 @@ export default function AddAssistantPage() {
                                 className="w-full"
                                 rows={6}
                             />
-                            <p className="text-xs text-gray-500 mt-1">
+                            <p className="text-xs text-muted-foreground mt-1">
                                 {t('systemPromptHelp')}
                             </p>
                         </div>
 
                         <div>
-                            <label htmlFor="context" className="block text-sm font-medium text-gray-700 mb-1">
+                            <label htmlFor="context" className="block text-sm font-medium text-foreground mb-1">
                                 {t('context')}
                             </label>
                             <Textarea
@@ -164,7 +164,7 @@ export default function AddAssistantPage() {
                                 className="w-full"
                                 rows={6}
                             />
-                            <p className="text-xs text-gray-500 mt-1">
+                            <p className="text-xs text-muted-foreground mt-1">
                                 {t('contextHelp')}
                             </p>
                         </div>

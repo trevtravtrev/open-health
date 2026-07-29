@@ -46,17 +46,21 @@ export type HealthCheckupType = z.infer<typeof HealthCheckupSchema>;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function normalizeTestResult(raw: any): any {
     if (!raw || typeof raw !== 'object') return raw;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const out: any = {...raw};
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let tr: any = out.test_result;
 
     // Some models prefer an array of {name, value, ...} over a keyed object.
     // Coerce it to the keyed form the schema expects.
     if (Array.isArray(tr)) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const asObj: any = {};
         for (const item of tr) {
             if (!item || typeof item !== 'object') continue;
             const nm = String(item.name ?? '').trim();
             if (!nm) continue;
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const {name: _name, ...rest} = item;
             asObj[nm] = rest;
         }
@@ -64,8 +68,10 @@ export function normalizeTestResult(raw: any): any {
     }
 
     if (tr && typeof tr === 'object') {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const fixed: any = {};
         for (const [key, value] of Object.entries(tr)) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             let coerced: any;
             if (value === null || value === undefined) {
                 continue;
@@ -74,6 +80,7 @@ export function normalizeTestResult(raw: any): any {
             } else if (typeof value === 'string') {
                 coerced = {value};
             } else if (typeof value === 'object') {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const obj = value as any;
                 if ('value' in obj || 'unit' in obj || 'reference_range' in obj || 'abnormal' in obj) {
                     coerced = {

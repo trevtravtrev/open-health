@@ -25,8 +25,8 @@ export default function JSONEditor({data, onSave, isEditable = false}: JSONEdito
     if (!isEditable) {
         return (
             <div className="h-full">
-                <h3 className="text-base font-semibold mb-2.5 text-gray-800">{t('extractedData')}</h3>
-                <pre className="text-sm font-mono bg-muted/30 p-4 rounded h-full whitespace-pre-wrap break-all">
+                <h3 className="text-base font-semibold mb-2.5 text-foreground">{t('extractedData')}</h3>
+                <pre className="text-sm font-mono bg-muted text-foreground/90 p-4 rounded h-full whitespace-pre-wrap break-all">
                     {JSON.stringify(data, null, 2)}
                 </pre>
             </div>
@@ -35,7 +35,7 @@ export default function JSONEditor({data, onSave, isEditable = false}: JSONEdito
 
     return (
         <div className="h-full flex flex-col">
-            <h3 className="text-base font-semibold mb-2.5 text-gray-800">{t('extractedData')}</h3>
+            <h3 className="text-base font-semibold mb-2.5 text-foreground">{t('extractedData')}</h3>
             <div className="flex justify-end mb-2">
                 <Button size="sm" onClick={handleSave}>
                     <Save className="w-4 h-4 mr-2"/>
@@ -43,7 +43,7 @@ export default function JSONEditor({data, onSave, isEditable = false}: JSONEdito
                 </Button>
             </div>
             <textarea
-                className="flex-1 font-mono text-sm p-4 border rounded-md whitespace-pre-wrap break-all"
+                className="flex-1 font-mono text-sm p-4 border border-border bg-background text-foreground rounded-md whitespace-pre-wrap break-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 value={editableData}
                 onChange={(e) => setEditableData(e.target.value)}
             />

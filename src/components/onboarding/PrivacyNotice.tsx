@@ -1,6 +1,6 @@
 export default function PrivacyNotice() {
     return (
-        <div className="mt-8 p-4 bg-gray-50 rounded-lg text-sm text-gray-600">
+        <div className="mt-8 p-4 bg-muted rounded-lg text-sm text-muted-foreground">
             <p className="mb-2">
                 OpenHealth is an open-source project.
                 If you prefer not to share any data, you can run it locally.
@@ -10,7 +10,7 @@ export default function PrivacyNotice() {
                     href="https://github.com/OpenHealthForAll/open-health"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-600 hover:text-blue-800"
+                    className="text-primary hover:text-primary/80"
                 >
                     GitHub Repository
                 </a>

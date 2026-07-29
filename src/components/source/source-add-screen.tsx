@@ -14,6 +14,7 @@ import JSONEditor from '../form/json-editor';
 import cuid from "cuid";
 import {cn} from "@/lib/utils";
 import Image from "next/image";
+import Link from "next/link";
 import {FaChevronLeft, FaChevronRight} from 'react-icons/fa';
 import TextInput from "@/components/form/text-input";
 import dynamic from "next/dynamic";
@@ -244,18 +245,18 @@ const AddSourceDialog: React.FC<AddSourceDialogProps> = ({
                         <label
                             htmlFor="file-upload"
                             className={cn(
-                                "flex items-center gap-4 p-4 border rounded-lg cursor-pointer hover:bg-gray-50",
+                                "flex items-center gap-4 p-4 border rounded-lg cursor-pointer hover:bg-muted",
                                 uploadStatus === 'uploading' && "opacity-50 cursor-not-allowed"
                             )}
                         >
                             {uploadStatus === 'uploading' ? (
-                                <Loader2 className="h-6 w-6 text-gray-500 animate-spin"/>
+                                <Loader2 className="h-6 w-6 text-muted-foreground animate-spin"/>
                             ) : (
-                                <FileText className="w-6 h-6 text-gray-500"/>
+                                <FileText className="w-6 h-6 text-muted-foreground"/>
                             )}
                             <div className="flex-1">
                                 <h3 className="font-medium">{t('uploadFiles')}</h3>
-                                <p className="text-sm text-gray-500">{t('uploadFilesDescription')}</p>
+                                <p className="text-sm text-muted-foreground">{t('uploadFilesDescription')}</p>
                             </div>
                         </label>
                         <input
@@ -269,13 +270,13 @@ const AddSourceDialog: React.FC<AddSourceDialogProps> = ({
                         />
 
                         <button
-                            className="flex items-center gap-4 p-4 border rounded-lg cursor-pointer hover:bg-gray-50 w-full"
+                            className="flex items-center gap-4 p-4 border rounded-lg cursor-pointer hover:bg-muted w-full"
                             onClick={handleAddSymptoms}
                         >
-                            <Activity className="w-6 h-6 text-gray-500"/>
+                            <Activity className="w-6 h-6 text-muted-foreground"/>
                             <div className="flex-1 text-left">
                                 <h3 className="font-medium">{t('uploadSymptoms')}</h3>
-                                <p className="text-sm text-gray-500">{t('uploadSymptomsDescription')}</p>
+                                <p className="text-sm text-muted-foreground">{t('uploadSymptomsDescription')}</p>
                             </div>
                         </button>
                     </div>
@@ -350,7 +351,7 @@ const HealthDataItem: React.FC<HealthDataItemProps> = ({healthData, isSelected, 
             className={`flex items-center justify-between p-2 rounded cursor-pointer transition-all
 ${isSelected
                 ? 'text-primary text-base font-semibold bg-primary/5'
-                : 'text-sm hover:bg-gray-50'}`}
+                : 'text-sm hover:bg-muted'}`}
             onClick={onClick}
         >
             <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -619,7 +620,7 @@ const HealthDataPreview = ({healthData, formData, setFormData, setHealthData}: H
         <>
             <div className="flex flex-col gap-4 h-full">
                 <div className="h-[40%] min-h-[300px]">
-                    <div className="bg-white h-full overflow-y-auto rounded-lg border">
+                    <div className="bg-card h-full overflow-y-auto rounded-lg border">
                         {(healthData?.type === HealthDataType.PERSONAL_INFO.id || healthData?.type === HealthDataType.SYMPTOMS.id) ? (
                             <div className="p-4">
                                 <DynamicForm
@@ -642,7 +643,7 @@ const HealthDataPreview = ({healthData, formData, setFormData, setHealthData}: H
                                     />
                                 </div>
                             ) : (
-                                <div className="bg-gray-50 p-4 rounded-lg relative flex flex-row h-full">
+                                <div className="bg-muted p-4 rounded-lg relative flex flex-row h-full">
                                     <div id="pdf" className="w-[60%] overflow-y-auto h-full">
                                         <Document file={healthData.filePath}
                                                   className="w-full"
@@ -663,9 +664,9 @@ const HealthDataPreview = ({healthData, formData, setFormData, setHealthData}: H
                                             })}
                                         </Document>
                                         <div
-                                            className="relative w-fit bottom-4 left-1/2 transform -translate-x-1/2 flex items-center space-x-4 bg-white p-2 rounded shadow">
+                                            className="relative w-fit bottom-4 left-1/2 transform -translate-x-1/2 flex items-center space-x-4 bg-card p-2 rounded shadow">
                                             <button
-                                                className="px-4 py-2 bg-gray-300 rounded"
+                                                className="px-4 py-2 bg-muted rounded"
                                                 onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
                                                 disabled={page <= 1}
                                             >
@@ -673,7 +674,7 @@ const HealthDataPreview = ({healthData, formData, setFormData, setHealthData}: H
                                             </button>
                                             <span>{page} / {numPages}</span>
                                             <button
-                                                className="px-4 py-2 bg-gray-300 rounded"
+                                                className="px-4 py-2 bg-muted rounded"
                                                 onClick={() => setPage((prev) => Math.min(prev + 1, numPages))}
                                                 disabled={page >= numPages}
                                             >
@@ -754,7 +755,7 @@ const HealthDataPreview = ({healthData, formData, setFormData, setHealthData}: H
                                         {healthData &&
                                             <div className="mt-4 w-full">
                                                 <button
-                                                    className="w-full py-2 bg-blue-500 text-white rounded"
+                                                    className="w-full py-2 bg-primary text-primary-foreground rounded"
                                                     onClick={() => {
                                                         setShowAddFieldName(undefined);
                                                         setShowAddFieldModal(true);
@@ -772,7 +773,7 @@ const HealthDataPreview = ({healthData, formData, setFormData, setHealthData}: H
                 </div>
 
                 <div className="flex-1">
-                    <div className="bg-white rounded-lg border h-full flex flex-col gap-4">
+                    <div className="bg-card rounded-lg border h-full flex flex-col gap-4">
                         <div className="flex-1 min-h-0 p-4">
                             <JSONEditor
                                 data={formData}
@@ -785,7 +786,7 @@ const HealthDataPreview = ({healthData, formData, setFormData, setHealthData}: H
                                 <div className="p-4">
                                     <h3 className="text-sm font-medium mb-2">Processing Log</h3>
                                     <div
-                                        className="h-[160px] bg-gray-50 p-3 rounded-lg text-sm font-mono overflow-y-auto">
+                                        className="h-[160px] bg-muted text-foreground/80 p-3 rounded-lg text-sm font-mono overflow-y-auto">
                                         {(formData.parsingLogs as string[]).map((log, index) => (
                                             <div key={index} className="mb-1">
                                                 {log}
@@ -799,9 +800,9 @@ const HealthDataPreview = ({healthData, formData, setFormData, setHealthData}: H
                 </div>
             </div>
             {showAddFieldModal && <div
-                className="fixed top-0 left-0 w-screen h-screen bg-black bg-opacity-50 flex justify-center items-center">
+                className="fixed top-0 left-0 w-screen h-screen bg-black/50 flex justify-center items-center">
                 {/* Input modal for adding, searchable dropdown to select a field, with confirm and cancel buttons */}
-                <div className="bg-white p-4 rounded-lg flex flex-col w-[50vw]">
+                <div className="bg-card p-4 rounded-lg flex flex-col w-[50vw]">
                     <p className="mb-4 font-bold">
                         Please select a field to add
                     </p>
@@ -809,17 +810,17 @@ const HealthDataPreview = ({healthData, formData, setFormData, setHealthData}: H
                         type="text"
                         autoFocus
                         placeholder="Type the test name exactly as printed (e.g. QuantiFERON-TB Gold)"
-                        className="border rounded px-3 py-2 w-full"
+                        className="border border-border bg-background text-foreground rounded px-3 py-2 w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         value={showAddFieldName?.value ?? ''}
                         onChange={(e) => setShowAddFieldName({value: e.target.value, label: e.target.value})}
                     />
-                    <p className="text-xs text-gray-500 mt-1">Any name is allowed — there is no fixed list.</p>
+                    <p className="text-xs text-muted-foreground mt-1">Any name is allowed — there is no fixed list.</p>
                     <div className="flex flex-row gap-2 mt-4">
                         <p className={
                             cn(
-                                'bg-blue-500 text-white py-2 px-4 rounded',
-                                'hover:bg-blue-600',
-                                'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50',
+                                'bg-primary text-primary-foreground py-2 px-4 rounded',
+                                'hover:bg-primary/90',
+                                'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-opacity-50',
                             )
                         }
                            onClick={() => {
@@ -881,9 +882,9 @@ const HealthDataPreview = ({healthData, formData, setFormData, setHealthData}: H
                         </p>
                         <p className={
                             cn(
-                                'bg-gray-300 text-black py-2 px-4 rounded',
-                                'hover:bg-gray-400',
-                                'focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50',
+                                'bg-muted text-foreground py-2 px-4 rounded',
+                                'hover:bg-muted',
+                                'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-opacity-50',
                             )
                         }
                            onClick={() => setShowAddFieldModal(false)}
@@ -1197,7 +1198,11 @@ export default function SourceAddScreen() {
     return (
         <div className="flex flex-col h-screen">
             <div className="h-14 border-b px-4 flex items-center justify-between">
-                <h1 className="text-base font-semibold">{t('title')}</h1>
+                <div className="flex items-center gap-3">
+                    <Link href="/" className="text-lg font-semibold tracking-tight transition-colors hover:text-primary">OpenHealth</Link>
+                    <span className="text-muted-foreground/60">/</span>
+                    <h1 className="text-sm font-medium text-muted-foreground">{t('title')}</h1>
+                </div>
             </div>
             <div className="flex flex-1 overflow-hidden">
                 <div className="w-80 border-r flex flex-col">
@@ -1307,7 +1312,7 @@ export default function SourceAddScreen() {
                                                                 aria-autocomplete={'none'}
                                                                 autoComplete={'off'}
                                                                 placeholder={t('enterYourAPIKey')}
-                                                                className="w-full p-2 border rounded-md text-sm"
+                                                                className="w-full p-2 border border-border bg-background text-foreground rounded-md text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                                                 value={visionParserApiKey}
                                                                 onChange={(e) => setVisionParserApiKey(e.target.value)}
                                                             />
@@ -1320,7 +1325,7 @@ export default function SourceAddScreen() {
                                                                 aria-autocomplete={'none'}
                                                                 autoComplete={'off'}
                                                                 placeholder={t('enterYourAPIUrl')}
-                                                                className="w-full p-2 border rounded-md text-sm"
+                                                                className="w-full p-2 border border-border bg-background text-foreground rounded-md text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                                                 value={visionParserApiUrl}
                                                                 onChange={(e) => setVisionParserApiUrl(e.target.value)}
                                                             />
@@ -1388,7 +1393,7 @@ export default function SourceAddScreen() {
                                                             <input
                                                                 type="password"
                                                                 placeholder={t('enterYourAPIKey')}
-                                                                className="w-full p-2 border rounded-md text-sm"
+                                                                className="w-full p-2 border border-border bg-background text-foreground rounded-md text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                                                 value={documentParserApiKey}
                                                                 onChange={(e) => setDocumentParserApiKey(e.target.value)}
                                                             />

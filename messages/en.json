@@ -2,7 +2,17 @@
   "HomePage": {
   },
   "Chat": {
-    "inputPlaceholder": "Type your message..."
+    "inputPlaceholder": "Type your message...  (Enter to send, Shift+Enter for newline)",
+    "emptyState": {
+      "greeting": "Hi — I'm your OpenHealth assistant.",
+      "subtitle": "Ask me anything about your health data, or start with one of these:"
+    },
+    "suggestedPrompts": {
+      "prompt1": "Summarize my latest blood test results",
+      "prompt2": "What could be causing my fatigue?",
+      "prompt3": "What questions should I ask my doctor next?",
+      "prompt4": "Build me a simple weekly nutrition plan"
+    }
   },
   "Feedback": {
     "helpMessage": "Help OpenHealth solve health problems for you and many others",

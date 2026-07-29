@@ -85,7 +85,7 @@ export default function PersonalInfo({value, onChange, touchedFields = {}}: Pers
         <div className="space-y-8">
             <div className="text-center mb-6">
                 <h2 className="text-2xl font-bold">{t('title')}</h2>
-                <p className="text-gray-600">{t('description')}</p>
+                <p className="text-foreground/80">{t('description')}</p>
             </div>
 
             <div className="space-y-6">
@@ -94,7 +94,7 @@ export default function PersonalInfo({value, onChange, touchedFields = {}}: Pers
                     <div
                         className={cn(
                             "flex space-x-4 p-2 rounded-md",
-                            isFieldInvalid('gender') && "border border-red-500 bg-red-50"
+                            isFieldInvalid('gender') && "border border-destructive bg-destructive/10"
                         )}
                     >
                         <div className="flex items-center space-x-2">
@@ -105,7 +105,7 @@ export default function PersonalInfo({value, onChange, touchedFields = {}}: Pers
                                 value="male"
                                 checked={value.gender === 'male'}
                                 onChange={(e) => handleChange('gender', e.target.value)}
-                                className="h-4 w-4"
+                                className="h-4 w-4 accent-primary"
                             />
                             <Label htmlFor="male" className="cursor-pointer">{t('gender.male')}</Label>
                         </div>
@@ -117,13 +117,13 @@ export default function PersonalInfo({value, onChange, touchedFields = {}}: Pers
                                 value="female"
                                 checked={value.gender === 'female'}
                                 onChange={(e) => handleChange('gender', e.target.value)}
-                                className="h-4 w-4"
+                                className="h-4 w-4 accent-primary"
                             />
                             <Label htmlFor="female" className="cursor-pointer">{t('gender.female')}</Label>
                         </div>
                     </div>
                     {isFieldInvalid('gender') && (
-                        <p className="text-sm text-red-500">{t('gender.error')}</p>
+                        <p className="text-sm text-destructive">{t('gender.error')}</p>
                     )}
                 </div>
 
@@ -135,11 +135,11 @@ export default function PersonalInfo({value, onChange, touchedFields = {}}: Pers
                         value={value.birthDate}
                         onChange={(e) => handleChange('birthDate', e.target.value)}
                         className={cn(
-                            isFieldInvalid('birthDate') && "border-red-500 bg-red-50"
+                            isFieldInvalid('birthDate') && "border-destructive bg-destructive/10"
                         )}
                     />
                     {isFieldInvalid('birthDate') && (
-                        <p className="text-sm text-red-500">{t('birthDate.error')}</p>
+                        <p className="text-sm text-destructive">{t('birthDate.error')}</p>
                     )}
                 </div>
 
@@ -154,7 +154,7 @@ export default function PersonalInfo({value, onChange, touchedFields = {}}: Pers
                                 value={value.height}
                                 onChange={(e) => handleChange('height', e.target.value)}
                                 className={cn(
-                                    isFieldInvalid('height') && "border-red-500 bg-red-50"
+                                    isFieldInvalid('height') && "border-destructive bg-destructive/10"
                                 )}
                             />
                             <Select value={value.heightUnit}
@@ -169,7 +169,7 @@ export default function PersonalInfo({value, onChange, touchedFields = {}}: Pers
                             </Select>
                         </div>
                         {isFieldInvalid('height') && (
-                            <p className="text-sm text-red-500">{t('height.error')}</p>
+                            <p className="text-sm text-destructive">{t('height.error')}</p>
                         )}
                     </div>
 
@@ -183,7 +183,7 @@ export default function PersonalInfo({value, onChange, touchedFields = {}}: Pers
                                 value={value.weight}
                                 onChange={(e) => handleChange('weight', e.target.value)}
                                 className={cn(
-                                    isFieldInvalid('weight') && "border-red-500 bg-red-50"
+                                    isFieldInvalid('weight') && "border-destructive bg-destructive/10"
                                 )}
                             />
                             <Select value={value.weightUnit}
@@ -198,7 +198,7 @@ export default function PersonalInfo({value, onChange, touchedFields = {}}: Pers
                             </Select>
                         </div>
                         {isFieldInvalid('weight') && (
-                            <p className="text-sm text-red-500">{t('weight.error')}</p>
+                            <p className="text-sm text-destructive">{t('weight.error')}</p>
                         )}
                     </div>
                 </div>
@@ -210,7 +210,7 @@ export default function PersonalInfo({value, onChange, touchedFields = {}}: Pers
                         onValueChange={(val: string) => handleChange('ethnicity', val)}
                     >
                         <SelectTrigger className={cn(
-                            isFieldInvalid('ethnicity') && "border-red-500 bg-red-50"
+                            isFieldInvalid('ethnicity') && "border-destructive bg-destructive/10"
                         )}>
                             <SelectValue placeholder={t('ethnicity.placeholder')}/>
                         </SelectTrigger>
@@ -230,7 +230,7 @@ export default function PersonalInfo({value, onChange, touchedFields = {}}: Pers
                         </SelectContent>
                     </Select>
                     {isFieldInvalid('ethnicity') && (
-                        <p className="text-sm text-red-500">{t('ethnicity.error')}</p>
+                        <p className="text-sm text-destructive">{t('ethnicity.error')}</p>
                     )}
                 </div>
 
@@ -243,11 +243,11 @@ export default function PersonalInfo({value, onChange, touchedFields = {}}: Pers
                         placeholder={t('country.placeholder')}
                         searchPlaceholder=""
                         className={cn(
-                            isFieldInvalid('country') && "border-red-500 bg-red-50"
+                            isFieldInvalid('country') && "border-destructive bg-destructive/10"
                         )}
                     />
                     {isFieldInvalid('country') && (
-                        <p className="text-sm text-red-500">{t('country.error')}</p>
+                        <p className="text-sm text-destructive">{t('country.error')}</p>
                     )}
                 </div>
             </div>

@@ -15,7 +15,7 @@ export default function HealthConcerns({value, onChange, isInvalid}: HealthConce
         <div className="space-y-6">
             <div className="text-center">
                 <h2 className="text-2xl font-bold mb-2">{t('title')}</h2>
-                <p className="text-gray-600">{t('description')}</p>
+                <p className="text-foreground/80">{t('description')}</p>
             </div>
 
             <div className="space-y-4">
@@ -25,11 +25,11 @@ export default function HealthConcerns({value, onChange, isInvalid}: HealthConce
                     placeholder={t('placeholder')}
                     className={cn(
                         "min-h-[200px] text-base",
-                        isInvalid && "border-red-500 bg-red-50"
+                        isInvalid && "border-destructive bg-destructive/10"
                     )}
                 />
                 {isInvalid && (
-                    <p className="text-sm text-red-500">{t('error')}</p>
+                    <p className="text-sm text-destructive">{t('error')}</p>
                 )}
             </div>
         </div>
