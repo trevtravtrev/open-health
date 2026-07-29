@@ -37,6 +37,10 @@ export default function Screen(
     const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(!isMobile);
     const [isStreaming, setIsStreaming] = useState(false);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const scrollRef = useRef<HTMLDivElement>(null);
+    // True while the user is parked at the bottom of the transcript. When they
+    // scroll up to read, we stop auto-scrolling so streaming doesn't yank them.
+    const stickToBottomRef = useRef(true);
 
     const {data, mutate} = useSWR<ChatMessageListResponse>(`/api/chat-rooms/${id}/messages`, async (url: string) => {
         const response = await fetch(url);
@@ -45,8 +49,10 @@ export default function Screen(
     const messages = useMemo(() => data?.chatMessages || [], [data]);
 
     useEffect(() => {
-        if (messagesEndRef.current) {
-            messagesEndRef.current.scrollIntoView({behavior: 'smooth'});
+        const el = scrollRef.current;
+        if (el && stickToBottomRef.current) {
+            // Instant (not smooth) to avoid layout thrash on every streamed chunk.
+            el.scrollTop = el.scrollHeight;
         }
     }, [messages]);
 
@@ -63,6 +69,7 @@ export default function Screen(
         // Clear input
         setInputText('');
         setIsStreaming(true);
+        stickToBottomRef.current = true;
 
         const oldMessages = [...messages, {
             id: new Date().toISOString(),
@@ -89,9 +96,41 @@ export default function Screen(
         const reader = response.body?.getReader();
         const decoder = new TextDecoder();
         const createdAt = new Date();
+        const STREAMING_ID = `streaming-${createdAt.getTime()}`;
         let buffer = '';
+        let latestContent = '';
 
-        const handleLine = async (line: string) => {
+        // Throttle UI updates during streaming. The server emits one event per
+        // token with the FULL cumulative content, so updating state per token
+        // re-renders far too often and freezes the page. Flush at most ~every
+        // 80ms, with a trailing flush so pauses still render, and a final forced
+        // flush so the last tokens are never dropped. A stable streaming id keeps
+        // React from remounting the message on every update.
+        let lastFlush = 0;
+        let pendingTimer: ReturnType<typeof setTimeout> | null = null;
+        const doFlush = () => mutate({
+            chatMessages: [
+                ...oldMessages,
+                {id: STREAMING_ID, content: latestContent, role: 'ASSISTANT', createdAt}
+            ]
+        }, {revalidate: false});
+        const scheduleFlush = () => {
+            const now = Date.now();
+            const elapsed = now - lastFlush;
+            if (elapsed >= 80) {
+                lastFlush = now;
+                if (pendingTimer) { clearTimeout(pendingTimer); pendingTimer = null; }
+                doFlush();
+            } else if (!pendingTimer) {
+                pendingTimer = setTimeout(() => {
+                    lastFlush = Date.now();
+                    pendingTimer = null;
+                    doFlush();
+                }, 80 - elapsed);
+            }
+        };
+
+        const handleLine = (line: string) => {
             const trimmed = line.trim();
             if (!trimmed) return;
             let parsed: { content?: string; error?: string };
@@ -106,12 +145,8 @@ export default function Screen(
                 return;
             }
             if (parsed.content) {
-                await mutate({
-                    chatMessages: [
-                        ...oldMessages,
-                        {id: new Date().toISOString(), content: parsed.content, role: 'ASSISTANT', createdAt}
-                    ]
-                }, {revalidate: false});
+                latestContent = parsed.content;
+                scheduleFlush();
             }
         };
 
@@ -126,13 +161,15 @@ export default function Screen(
                     // Keep the trailing (possibly incomplete) segment buffered.
                     buffer = lines.pop() ?? '';
                     for (const line of lines) {
-                        await handleLine(line);
+                        handleLine(line);
                     }
                 }
                 // Flush anything left after the stream closes.
-                await handleLine(buffer);
+                handleLine(buffer);
                 buffer = '';
-                await mutate();
+                if (pendingTimer) { clearTimeout(pendingTimer); pendingTimer = null; }
+                await doFlush();          // final forced flush (no dropped tokens)
+                await mutate();           // revalidate against the persisted message
             }
         } finally {
             setIsStreaming(false);
@@ -171,7 +208,14 @@ export default function Screen(
 
                 {/* Main content */}
                 <div className="flex-1 flex flex-col bg-background min-w-0">
-                    <div className="flex-1 overflow-y-auto">
+                    <div
+                        ref={scrollRef}
+                        onScroll={(e) => {
+                            const el = e.currentTarget;
+                            // Considered "at the bottom" if within ~3 lines of the end.
+                            stickToBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+                        }}
+                        className="flex-1 overflow-y-auto">
                         <div className="mx-auto w-full max-w-7xl space-y-8 p-4 md:p-6">
                             {messages.length === 0 ? (
                                 <div className="flex h-full flex-col items-center justify-center py-20 text-center">

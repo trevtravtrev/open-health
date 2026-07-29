@@ -15,7 +15,7 @@ interface ChatMessageProps {
     isLastAssistant?: boolean
 }
 
-export default function ChatMessage({message, isStreaming, isLastAssistant}: ChatMessageProps) {
+function ChatMessage({message, isStreaming, isLastAssistant}: ChatMessageProps) {
     const [copied, setCopied] = useState(false)
     const isAssistant = message.role === 'ASSISTANT'
 
@@ -77,6 +77,15 @@ export default function ChatMessage({message, isStreaming, isLastAssistant}: Cha
                 <div
                     className="relative overflow-hidden rounded-2xl rounded-tl-sm border border-border/60 bg-card py-4 pl-5 pr-5">
                     <span className="absolute inset-y-0 left-0 w-[3px] bg-primary" aria-hidden="true"/>
+                    {/* While streaming, render plain text — re-parsing the full
+                        markdown (remark-gfm + math + katex) on every token is
+                        O(n^2) and freezes the page. Format once streaming ends. */}
+                    {showCaret ? (
+                        <div className="whitespace-pre-wrap break-words text-sm leading-7 text-foreground/90">
+                            {message.content}
+                            <span className="ml-0.5 inline-block h-4 w-[2px] animate-pulse bg-primary align-middle"/>
+                        </div>
+                    ) : (
                     <Markdown
                         className={cn(
                             'prose prose-invert max-w-none',
@@ -101,11 +110,13 @@ export default function ChatMessage({message, isStreaming, isLastAssistant}: Cha
                     >
                         {message.content}
                     </Markdown>
-                    {showCaret && (
-                        <span className="ml-0.5 inline-block h-4 w-[2px] animate-pulse bg-primary align-middle"/>
                     )}
                 </div>
             </div>
         </div>
     )
 }
+
+// Memoized: during streaming, only the streaming (last) message changes, so
+// historical messages are skipped instead of re-parsing their markdown.
+export default React.memo(ChatMessage)
