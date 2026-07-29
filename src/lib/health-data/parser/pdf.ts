@@ -1,7 +1,7 @@
 /* eslint-disable */
 
 import {ChatPromptTemplate} from "@langchain/core/prompts";
-import {HealthCheckupSchema, HealthCheckupType} from "@/lib/health-data/parser/schema";
+import {HealthCheckupSchema, HealthCheckupType, normalizeTestResult} from "@/lib/health-data/parser/schema";
 import {fileTypeFromBuffer} from 'file-type';
 import {getFileMd5, processBatchWithConcurrency} from "@/lib/health-data/parser/util";
 import {getParsePrompt, MessagePayload} from "@/lib/health-data/parser/prompt";
@@ -13,6 +13,24 @@ import fs from "node:fs";
 import {fromBuffer as pdf2picFromBuffer} from 'pdf2pic'
 import {tasks} from "@trigger.dev/sdk/v3";
 import type {pdfToImages} from "@/trigger/pdf-to-image";
+
+// Local-only (Windows): pdf2pic shells out to `gm` (GraphicsMagick) and
+// Ghostscript, resolving them from PATH at call time. If the dev server was
+// launched without those dirs on PATH (e.g. started directly instead of via the
+// desktop launcher), prepend them here so PDF parsing doesn't fail with
+// "gm binaries can't be found". Runs once at module load, before any parse.
+if (process.platform === 'win32') {
+    const _extras = [
+        process.env.GRAPHICSMAGICK_PATH,
+        'C:\\Users\\trevo\\tools\\GraphicsMagick',
+        'C:\\Program Files\\GraphicsMagick',
+        process.env.GHOSTSCRIPT_PATH,
+        'C:\\Users\\trevo\\tools\\Ghostscript\\bin',
+    ].filter((p): p is string => Boolean(p) && fs.existsSync(p as string));
+    if (_extras.length && process.env.PATH && !_extras.every(e => process.env.PATH!.includes(e))) {
+        process.env.PATH = _extras.join(';') + ';' + process.env.PATH;
+    }
+}
 
 interface VisionParserOptions {
     parser: string;
@@ -149,36 +167,33 @@ async function inference(inferenceOptions: InferenceOptions) {
         return acc;
     }, {} as { [key: string]: HealthCheckupType });
 
-    // Merge Results
-    const mergeInfo: { [key: string]: { pages: number[], values: any[] } } = {}
-
-    for (const key of HealthCheckupSchema.shape.test_result.keyof().options) {
-        const testFields = [];
-        const testPages: number[] = [];
-        for (let i = 0; i < numPages; i++) {
-            const healthCheckup = data[`page_${i}`]
-            const healthCheckupTestResult = healthCheckup.test_result
-
-            if (healthCheckupTestResult.hasOwnProperty(key) && healthCheckupTestResult[key]) {
-                testFields.push(healthCheckupTestResult[key])
-                testPages.push(i)
-            }
-        }
-
-        if (testFields.length > 0) {
-            mergeInfo[key] = {'pages': testPages, 'values': testFields}
-        }
+    // The model occasionally returns a test value as a bare string/number
+    // (e.g. "ferritin": "27.4") despite the tool schema. Coerce those into
+    // {value} objects per page BEFORE merging, so they are kept instead of
+    // crashing HealthCheckupSchema.parse() ("Expected object, received string").
+    for (const pageKey of Object.keys(data)) {
+        data[pageKey] = normalizeTestResult(data[pageKey]) as HealthCheckupType;
     }
 
+    // Merge Results — FREE-FORM. test_result is a keyed object of verbatim test
+    // names, so iterate each page's actual keys (not a fixed catalog), dedupe by
+    // lowercased name (first non-empty value wins), and track the source page.
     const mergedTestResult: { [key: string]: any } = {}
     const mergedTestResultPage: { [key: string]: { page: number } } = {}
+    const seenLower = new Set<string>()
 
-    // Merge the results
-    for (const mergeInfoKey in mergeInfo) {
-        const mergeTarget = mergeInfo[mergeInfoKey]
-        mergedTestResult[mergeInfoKey] = mergeTarget.values[0]
-        mergedTestResultPage[mergeInfoKey] = {
-            page: mergeTarget.pages[0] + 1
+    for (let i = 0; i < numPages; i++) {
+        const healthCheckup = data[`page_${i}`]
+        // A page's vision parse can resolve empty/undefined; skip it gracefully
+        // instead of crashing the whole parse ("Cannot read properties of undefined").
+        if (!healthCheckup?.test_result) continue
+        for (const [name, val] of Object.entries(healthCheckup.test_result as Record<string, any>)) {
+            if (val == null) continue
+            const lower = name.trim().toLowerCase()
+            if (!lower || seenLower.has(lower)) continue
+            mergedTestResult[name] = val
+            mergedTestResultPage[name] = {page: i + 1}
+            seenLower.add(lower)
         }
     }
 
@@ -187,14 +202,16 @@ async function inference(inferenceOptions: InferenceOptions) {
     // Merge name and date
     for (let i = 0; i < numPages; i++) {
         const healthCheckup = data[`page_${i}`]
+        if (!healthCheckup) continue
         mergeData = {
             ...mergeData,
             ...healthCheckup,
         }
     }
 
-    // Update test_result with merged data
+    // test_result + page map (free-form, deduped by name)
     mergeData['test_result'] = mergedTestResult
+    delete mergeData['other_results'] // legacy field from the old hybrid schema
 
     // Create final HealthCheckup object
     const finalHealthCheckup = HealthCheckupSchema.parse(mergeData)
@@ -227,7 +244,23 @@ async function documentToImages({file: filePath}: Pick<SourceParseOptions, 'file
     if (mime === 'application/pdf') {
         if (currentDeploymentEnv === 'local') {
             const pdf2picConverter = pdf2picFromBuffer(fileBuffer, {preserveAspectRatio: true})
-            for (const image of await pdf2picConverter.bulk(-1, {responseType: 'base64'})) {
+            // pdf2pic shells out to gm, which can fail transiently under load
+            // ("gm binaries can't be found" is its generic error for any gm failure). Retry.
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            let bulkResult: any[] = []
+            let lastErr: unknown
+            for (let attempt = 0; attempt < 3; attempt++) {
+                try {
+                    bulkResult = await pdf2picConverter.bulk(-1, {responseType: 'base64'})
+                    lastErr = null
+                    break
+                } catch (e) {
+                    lastErr = e
+                    if (attempt < 2) await new Promise(r => setTimeout(r, 2000))
+                }
+            }
+            if (lastErr) throw lastErr
+            for (const image of bulkResult) {
                 if (image.base64) images.push(`data:image/png;base64,${image.base64}`)
             }
         } else {
@@ -319,61 +352,34 @@ export async function parseHealthData(options: SourceParseOptions) {
     const resultDictText = resultText.test_result
     const resultDictImage = resultImage.test_result
 
+    // Merge the three inference passes FREE-FORM by verbatim name
+    // (case-insensitive dedupe). Prefer 'total', then text, then image; skip
+    // null/empty values. No fixed key set is assumed.
     const mergedTestResult: { [key: string]: any } = {}
     const mergedPageResult: { [key: string]: { page: number } | null } = {}
+    const seenLower = new Set<string>()
 
-    for (const key of HealthCheckupSchema.shape.test_result.keyof().options) {
-        const valueTotal =
-            resultDictTotal.hasOwnProperty(key) &&
-            resultDictTotal[key] !== null &&
-            resultDictTotal[key]!.value !== null
-                ? resultDictTotal[key]
-                : null;
-        const pageTotal = valueTotal !== null ? resultTotalPages[key] : null;
-
-        const valueText =
-            resultDictText.hasOwnProperty(key) &&
-            resultDictText[key] !== null &&
-            resultDictText[key]!.value !== null
-                ? resultDictText[key]
-                : null;
-        const pageText = valueText !== null ? resultTextPages[key] : null;
-
-        const valueImage =
-            resultDictImage.hasOwnProperty(key) &&
-            resultDictImage[key] !== null &&
-            resultDictImage[key]!.value !== null
-                ? resultDictImage[key]
-                : null;
-        const pageImage = valueImage !== null ? resultImagePages[key] : null;
-
-        if (valueTotal === null) {
-            if (valueText !== null) {
-                mergedTestResult[key] = valueText;
-                mergedPageResult[key] = pageText;
-            } else if (valueImage !== null) {
-                mergedTestResult[key] = valueImage;
-                mergedPageResult[key] = pageImage;
-            } else {
-                mergedTestResult[key] = valueText;
-                mergedPageResult[key] = pageText;
-            }
-        } else {
-            mergedTestResult[key] = valueTotal;
-            mergedPageResult[key] = pageTotal;
-        }
-    }
-
-    // remove all null values in mergedTestResult
-    for (const key in mergedTestResult) {
-        if (mergedTestResult[key] === null) {
-            delete mergedTestResult[key]
+    const passes: Array<{dict: any, pages: Record<string, { page: number }>}> = [
+        {dict: resultDictTotal, pages: resultTotalPages},
+        {dict: resultDictText, pages: resultTextPages},
+        {dict: resultDictImage, pages: resultImagePages},
+    ]
+    for (const {dict, pages} of passes) {
+        if (!dict || typeof dict !== 'object') continue
+        for (const [name, val] of Object.entries(dict as Record<string, any>)) {
+            const lower = name.trim().toLowerCase()
+            if (!lower || seenLower.has(lower)) continue
+            const nonEmpty = val != null && (typeof val !== 'object' || String(val?.value ?? '').trim() !== '')
+            if (!nonEmpty) continue
+            mergedTestResult[name] = val
+            mergedPageResult[name] = pages[name] ?? null
+            seenLower.add(lower)
         }
     }
 
     const healthCheckup = HealthCheckupSchema.parse({
         ...resultTotal,
-        test_result: mergedTestResult
+        test_result: mergedTestResult,
     })
 
     return {data: [healthCheckup], pages: [mergedPageResult], ocrResults: [ocrResults]}

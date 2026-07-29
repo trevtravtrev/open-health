@@ -55,7 +55,7 @@ export async function onboardingSubmit(data: OnboardingSubmitRequest) {
         await prisma.user.update({where: {id: userId}, data: {hasOnboarded: true}})
 
         // ChatRoom assistant modes 채팅 전부 생성
-        const llmProvider = await prisma.lLMProvider.findFirstOrThrow({where: {providerId: 'openai'}})
+        const llmProvider = await prisma.lLMProvider.findFirstOrThrow({where: {providerId: 'zai'}})
         const assistantModes = await prisma.assistantMode.findMany({
             where: {
                 OR: [
@@ -72,7 +72,7 @@ export async function onboardingSubmit(data: OnboardingSubmitRequest) {
                     authorId: userId,
                     assistantModeId: mode.id,
                     llmProviderId: llmProvider.id,
-                    llmProviderModelId: 'o3-mini'
+                    llmProviderModelId: 'glm-5.2'
                 }
             })
         })

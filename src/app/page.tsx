@@ -32,12 +32,14 @@ export default async function Page() {
     let chatRoom = lastChatRoom
     if (!lastChatRoom) {
         const assistantMode = await prisma.assistantMode.findFirstOrThrow({where: {authorId: session.user.id}})
-        const llmProvider = await prisma.lLMProvider.findFirstOrThrow({where: {authorId: session.user.id}})
+        const llmProvider = await prisma.lLMProvider.findFirst({where: {authorId: session.user.id, providerId: 'zai'}})
+            ?? await prisma.lLMProvider.findFirstOrThrow({where: {authorId: session.user.id}})
         chatRoom = await prisma.chatRoom.create({
             data: {
                 name: 'Chat',
                 assistantModeId: assistantMode.id,
                 llmProviderId: llmProvider.id,
+                llmProviderModelId: llmProvider.providerId === 'zai' ? 'glm-5.2' : undefined,
                 authorId: session.user.id,
             }
         })

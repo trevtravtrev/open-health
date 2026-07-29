@@ -15,7 +15,6 @@ import cuid from "cuid";
 import {cn} from "@/lib/utils";
 import Image from "next/image";
 import {FaChevronLeft, FaChevronRight} from 'react-icons/fa';
-import testItems from '@/lib/health-data/parser/test-items.json'
 import TextInput from "@/components/form/text-input";
 import dynamic from "next/dynamic";
 import {HealthDataParserVisionListResponse} from "@/app/api/health-data-parser/visions/route";
@@ -397,7 +396,7 @@ const HealthDataPreview = ({healthData, formData, setFormData, setHealthData}: H
     } | undefined>(undefined);
 
     const [userBloodTestResults, setUserBloodTestResults] = useState<{
-        test_result: { [key: string]: { value: string, unit: string } }
+        test_result: { [key: string]: { value: string, unit: string, reference_range?: string | null, abnormal?: boolean | null } }
     } | null>(null);
 
     const [userBloodTestResultsPage, setUserBloodTestResultsPage] = useState<{
@@ -490,11 +489,12 @@ const HealthDataPreview = ({healthData, formData, setFormData, setHealthData}: H
     }, [page, dataPerPage, formData]);
 
     const sortedPageTestResults = useMemo(() => {
-        return testItems
-            .filter((item) => Object.entries(currentPageTestResults).some(([key, _]) => key === item.name))
+        // Free-form: iterate the actual result keys on this page (no fixed catalog),
+        // sorted by spatial position via the value's OCR focus words.
+        return Object.keys(currentPageTestResults)
             .sort((a, b) => {
-                const aFocusedWords = userBloodTestResults?.test_result[a.name] ? getFocusedWords(page, userBloodTestResults?.test_result[a.name].value) : [];
-                const bFocusedWords = userBloodTestResults?.test_result[b.name] ? getFocusedWords(page, userBloodTestResults?.test_result[b.name].value) : [];
+                const aFocusedWords = userBloodTestResults?.test_result?.[a] ? getFocusedWords(page, userBloodTestResults?.test_result[a].value) : [];
+                const bFocusedWords = userBloodTestResults?.test_result?.[b] ? getFocusedWords(page, userBloodTestResults?.test_result[b].value) : [];
 
                 // focused words 에 좌표 정보가 없는게 있으면 가장 마지막 인덱스로 보내기
                 if (aFocusedWords.length === 0) return 1;
@@ -502,7 +502,7 @@ const HealthDataPreview = ({healthData, formData, setFormData, setHealthData}: H
 
                 return getNearestBoundingBox(aFocusedWords[0].boundingBox, bFocusedWords[0].boundingBox);
             })
-    }, [getFocusedWords, page, currentPageTestResults, healthData, dataPerPage])
+    }, [getFocusedWords, page, currentPageTestResults, userBloodTestResults])
 
     const getFields = (): Field[] => {
         switch (healthData.type) {
@@ -684,13 +684,13 @@ const HealthDataPreview = ({healthData, formData, setFormData, setHealthData}: H
                                     {userBloodTestResults?.test_result && <div
                                         id="test-result"
                                         className="w-[40%] overflow-y-auto p-4">
-                                        {sortedPageTestResults.map((item) =>
+                                        {sortedPageTestResults.map((name) =>
                                             <TextInput
-                                                key={item.name}
-                                                name={item.name.replace(/(^\w|_\w)/g, (match) => match.replace('_', '').toUpperCase())}
-                                                label={item.description}
+                                                key={name}
+                                                name={name}
+                                                label={name}
                                                 value={
-                                                    userBloodTestResults && userBloodTestResults.test_result ? userBloodTestResults.test_result[item.name]?.value : ''
+                                                    userBloodTestResults && userBloodTestResults.test_result ? userBloodTestResults.test_result[name]?.value ?? '' : ''
                                                 }
                                                 onChange={(v) => {
                                                     setUserBloodTestResults((prev) => {
@@ -698,8 +698,8 @@ const HealthDataPreview = ({healthData, formData, setFormData, setHealthData}: H
                                                             ...prev,
                                                             test_result: {
                                                                 ...prev?.test_result,
-                                                                [item.name]: {
-                                                                    ...prev?.test_result[item.name],
+                                                                [name]: {
+                                                                    ...prev?.test_result?.[name],
                                                                     value: v.target.value,
                                                                 }
                                                             }
@@ -709,8 +709,8 @@ const HealthDataPreview = ({healthData, formData, setFormData, setHealthData}: H
                                                         ...formData,
                                                         test_result: {
                                                             ...formData?.test_result,
-                                                            [item.name]: {
-                                                                ...formData?.test_result[item.name],
+                                                            [name]: {
+                                                                ...formData?.test_result?.[name],
                                                                 value: v.target.value,
                                                             }
                                                         }
@@ -719,35 +719,35 @@ const HealthDataPreview = ({healthData, formData, setFormData, setHealthData}: H
                                                 onDelete={() => {
                                                     setUserBloodTestResults((prev) => {
                                                         const {test_result} = prev ?? {test_result: {}};
-                                                        delete test_result[item.name];
+                                                        delete test_result[name];
                                                         return {test_result};
                                                     });
 
                                                     // Delete From Metadata
                                                     setDataPerPage((prev: any) => {
-                                                        delete prev[item.name]
+                                                        delete prev[name]
                                                         return {...prev}
                                                     })
 
                                                     // Delete From FormData
-                                                    delete formData.test_result[item.name]
+                                                    delete formData.test_result[name]
                                                     setFormData(formData)
 
                                                     // Update Health Data
                                                     if (setHealthData) {
                                                         const metadata: any = healthData.metadata || {}
-                                                        delete dataPerPage[item.name]
+                                                        delete dataPerPage[name]
                                                         setHealthData({
                                                             ...healthData,
                                                             metadata: {...metadata, dataPerPage}
                                                         })
                                                     }
                                                 }}
-                                                onBlur={(v) => handleBlur(item.name)}
-                                                onFocus={(v) => handleFocus(item.name)}
-                                                onKeyDown={(e) => handleKeyDown(e, item.name)}
+                                                onBlur={(v) => handleBlur(name)}
+                                                onFocus={(v) => handleFocus(name)}
+                                                onKeyDown={(e) => handleKeyDown(e, name)}
                                                 ref={(el) => {
-                                                    inputRefs.current[item.name] = el;
+                                                    inputRefs.current[name] = el;
                                                 }}
                                             />)}
 
@@ -805,35 +805,15 @@ const HealthDataPreview = ({healthData, formData, setFormData, setHealthData}: H
                     <p className="mb-4 font-bold">
                         Please select a field to add
                     </p>
-                    <Select
-                        className="basic-single"
-                        classNamePrefix="select"
-                        isDisabled={false}
-                        isLoading={false}
-                        isClearable={true}
-                        isRtl={false}
-                        isSearchable={true}
-                        name="field"
-                        options={testItems.map((bloodTestItem) => (
-                            {
-                                value: bloodTestItem.name,
-                                label: `${bloodTestItem.name} (${bloodTestItem.description})`,
-                                isDisabled: Object.entries(userBloodTestResults?.test_result ?? {}).filter(([_, value]) => value).map(([key, _]) => key).includes(bloodTestItem.name),
-                            }
-                        ))}
-                        value={showAddFieldName}
-                        onChange={(selectedOption) => {
-                            if (selectedOption) {
-                                setShowAddFieldName(selectedOption as {
-                                    value: string;
-                                    label: string;
-                                    isDisabled?: boolean
-                                });
-                            } else {
-                                setShowAddFieldName(undefined);
-                            }
-                        }}
+                    <input
+                        type="text"
+                        autoFocus
+                        placeholder="Type the test name exactly as printed (e.g. QuantiFERON-TB Gold)"
+                        className="border rounded px-3 py-2 w-full"
+                        value={showAddFieldName?.value ?? ''}
+                        onChange={(e) => setShowAddFieldName({value: e.target.value, label: e.target.value})}
                     />
+                    <p className="text-xs text-gray-500 mt-1">Any name is allowed — there is no fixed list.</p>
                     <div className="flex flex-row gap-2 mt-4">
                         <p className={
                             cn(
@@ -843,8 +823,8 @@ const HealthDataPreview = ({healthData, formData, setFormData, setHealthData}: H
                             )
                         }
                            onClick={() => {
-                               if (showAddFieldName) {
-                                   const value = showAddFieldName.value
+                               if (showAddFieldName && showAddFieldName.value.trim()) {
+                                   const value = showAddFieldName.value.trim()
 
                                    setUserBloodTestResults((prev) => {
                                        return {
@@ -1018,34 +998,44 @@ export default function SourceAddScreen() {
                 // Start polling for parsing status
                 if (data.id) {
                     let attempts = 0;
-                    const maxAttempts = 30; // 30 seconds timeout
+                    const maxAttempts = 1200; // ~60 min backstop; parsing can take minutes when queued
                     const pollInterval = setInterval(async () => {
                         try {
                             const statusResponse = await fetch(`/api/health-data/${data.id}`);
-                            const {healthData: statusData}: HealthDataGetResponse = await statusResponse.json();
-                            console.log('Parsing status check:', {
-                                id: data.id,
-                                status: statusData.status,
-                                attempt: attempts + 1
-                            });
-
-                            if (statusData.status === 'COMPLETED' || statusData.status === 'ERROR' || attempts >= maxAttempts) {
-                                clearInterval(pollInterval);
-                                if (statusData.status === 'ERROR') {
-                                    console.error('Parsing failed:', statusData);
-                                } else if (statusData.status === 'COMPLETED') {
-                                    console.log('Parsing completed successfully:', statusData);
-                                }
-                                await mutate();
-                                setSelectedId(data.id);
-                                setFormData(statusData.data as Record<string, any>);
+                            if (!statusResponse.ok) {
+                                // transient server error (e.g. dev recompile) — keep polling
+                                attempts++;
+                                if (attempts >= maxAttempts) clearInterval(pollInterval);
+                                return;
                             }
-                            attempts++;
+                            let statusData: any;
+                            try {
+                                ({healthData: statusData} = await statusResponse.json() as HealthDataGetResponse);
+                            } catch {
+                                // empty / non-JSON body (transient) — keep polling, do NOT abort
+                                attempts++;
+                                if (attempts >= maxAttempts) clearInterval(pollInterval);
+                                return;
+                            }
+                            if (!statusData || (statusData.status !== 'COMPLETED' && statusData.status !== 'ERROR' && attempts < maxAttempts)) {
+                                attempts++;
+                                return;
+                            }
+                            clearInterval(pollInterval);
+                            if (statusData.status === 'ERROR') {
+                                console.error('Parsing failed:', statusData);
+                            } else if (statusData.status === 'COMPLETED') {
+                                console.log('Parsing completed successfully:', statusData);
+                            }
+                            await mutate();
+                            setSelectedId(data.id);
+                            if (statusData.data) setFormData(statusData.data as Record<string, any>);
                         } catch (error) {
                             console.error('Failed to check parsing status:', error);
-                            clearInterval(pollInterval);
+                            attempts++;
+                            if (attempts >= maxAttempts) clearInterval(pollInterval);
                         }
-                    }, 1000); // Check every second
+                    }, 3000); // Check every 3s
                 }
             }
         } catch (error) {
@@ -1173,7 +1163,8 @@ export default function SourceAddScreen() {
 
     useEffect(() => {
         if (visionDataList?.visions && visionParser === undefined) {
-            const {name} = visionDataList.visions[0];
+            const vision = visionDataList.visions.find(v => v.name === 'ZAI') ?? visionDataList.visions[0];
+            const {name} = vision;
             setVisionParser({value: name, label: name})
             setVisionParserModel(undefined)
             setVisionParserApiUrl('')
@@ -1182,14 +1173,15 @@ export default function SourceAddScreen() {
 
     useEffect(() => {
         if (visionModelDataList?.models && visionModelDataList.models.length > 0 && visionParserModel === undefined) {
-            const {name} = visionModelDataList.models[0];
-            setVisionParserModel({value: name, label: name})
+            const {id, name} = visionModelDataList.models[0];
+            setVisionParserModel({value: id, label: name})
         }
     }, [visionModelDataList, visionParser, visionParserModel]);
 
     useEffect(() => {
         if (documentDataList?.documents && documentParser === undefined) {
-            const {name} = documentDataList.documents[0];
+            const document = documentDataList.documents.find(d => d.name === 'Docling') ?? documentDataList.documents[0];
+            const {name} = document;
             setDocumentParser({value: name, label: name})
             setDocumentParserModel(undefined)
         }
@@ -1209,13 +1201,13 @@ export default function SourceAddScreen() {
             </div>
             <div className="flex flex-1 overflow-hidden">
                 <div className="w-80 border-r flex flex-col">
-                    <div className="p-4 flex flex-col gap-4">
+                    <div className="p-4 flex-1 min-h-0 flex flex-col gap-4">
                         <AddSourceDialog
                             isSetUpVisionParser={visionParser !== undefined && visionParserModel !== undefined && (!visionParserApiKeyRequired || visionParserApiKey.length > 0)}
                             isSetUpDocumentParser={documentParser !== undefined && documentParserModel !== undefined && (!documentParserApiKeyRequired || documentParserApiKey.length > 0)}
                             onFileUpload={handleFileUpload}
                             onAddSymptoms={handleAddSymptoms}/>
-                        <div className="flex-1 overflow-y-auto">
+                        <div className="flex-1 min-h-0 overflow-y-auto">
                             {healthDataList?.healthDataList?.map((item) => (
                                 <HealthDataItem
                                     key={item.id}

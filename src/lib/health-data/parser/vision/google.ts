@@ -3,7 +3,6 @@ import {ChatGoogleGenerativeAI} from "@langchain/google-genai";
 import {HealthCheckupSchema} from "@/lib/health-data/parser/schema";
 import {ChatPromptTemplate} from "@langchain/core/prompts";
 import {z} from "zod";
-import {processBatchWithConcurrency} from "@/lib/health-data/parser/util";
 import {currentDeploymentEnv} from "@/lib/current-deployment-env";
 
 type ZodTypeAny = z.ZodTypeAny;
@@ -55,57 +54,27 @@ export class GoogleVisionParser extends BaseVisionParser {
             .withRetry({stopAfterAttempt: 3})
             .invoke(options.input)
 
-        // parse the test results in chunks of 33 keys
-        const chunkedKeys = this.chunkArray(Object.keys(HealthCheckupSchema.shape.test_result.shape), 33);
-        const chunks = await this.requestChunks(chunkedKeys);
-        const results = await processBatchWithConcurrency(
-            chunks,
-            async (chunk) => {
-                return messages.pipe(llm.withStructuredOutput(chunk, {method: 'functionCalling'}))
-                    .withRetry({stopAfterAttempt: 3})
-                    .invoke(options.input);
-            },
-            5
-        )
+        // parse the test results — FREE-FORM keyed object (no fixed key list, so
+        // no more 33-key chunking). test_result is a ZodRecord of verbatim names.
+        const TestResultSchema = this.removeNullable(
+            z.object({test_result: HealthCheckupSchema.shape.test_result})
+        );
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const out: any = await messages.pipe(llm.withStructuredOutput(TestResultSchema, {method: 'functionCalling'}))
+            .withRetry({stopAfterAttempt: 3})
+            .invoke(options.input);
 
-        return HealthCheckupSchema.parse({date, name, test_result: this.mergeResults(results)})
-    }
-
-    private chunkArray<T>(array: T[], size: number): T[][] {
-        const result: T[][] = [];
-        for (let i = 0; i < array.length; i += size) {
-            result.push(array.slice(i, i + size));
-        }
-        return result;
-    };
-
-    private async requestChunks(chunks: string[][]) {
-        const testResultSchema = HealthCheckupSchema.shape.test_result;
-        return await Promise.all(chunks.map(async (chunk) => {
-            return z.object(
-                chunk.reduce((acc, key) => {
-                    acc[key] = this.removeNullable(testResultSchema.shape[key as keyof typeof testResultSchema.shape])
-                    return acc;
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                }, {} as Record<string, any>)
-            );
-        }));
-    };
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    private mergeResults(results: any[]) {
-        return results.reduce((acc, result) => {
-            for (const [key, value] of Object.entries(result)) {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                if (Object.keys(value as any).length === 0) {
-                    delete result[key];
-                } else if (result[key] && result[key].value === '') {
-                    delete result[key];
-                }
+        // drop empty-value entries the model may emit
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const cleaned: Record<string, any> = {};
+        for (const [k, v] of Object.entries(out?.test_result ?? {})) {
+            if (v && typeof v === 'object' && String((v as any).value ?? '').trim() !== '') {
+                cleaned[k] = v;
             }
-            return {...acc, ...result};
-        }, {});
-    };
+        }
+
+        return HealthCheckupSchema.parse({date, name, test_result: cleaned});
+    }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private removeNullable<T extends ZodTypeAny>(schema: T): any {
@@ -124,6 +93,11 @@ export class GoogleVisionParser extends BaseVisionParser {
             }
 
             return z.object(newShape) as z.ZodType<z.infer<T>>;
+        }
+
+        // Handle record types (free-form keyed object, e.g. test_result)
+        if (schema instanceof z.ZodRecord) {
+            return z.record(this.removeNullable(schema.valueSchema as ZodTypeAny)) as z.ZodType<z.infer<T>>;
         }
 
         // Handle array types

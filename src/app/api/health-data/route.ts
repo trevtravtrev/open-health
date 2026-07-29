@@ -41,6 +41,69 @@ export interface HealthDataCreateResponse extends HealthData {
     id: string;
 }
 
+// Background parse queue: parses run one at a time so heavy Docling + vision
+// work doesn't overload the local Docling container or trip model rate limits.
+// The POST handler returns the PARSING record immediately; the queue updates it
+// to COMPLETED/ERROR when the (possibly multi-minute) parse finishes. This keeps
+// the browser fetch from timing out ("Failed to fetch") on large PDFs.
+let parseQueue: Promise<void> = Promise.resolve();
+function enqueueParse(task: () => Promise<void>) {
+    parseQueue = parseQueue.then(task).catch((err) => {
+        console.error('Background parse task crashed:', err);
+    });
+}
+
+interface ParseJob {
+    id: string;
+    filePath: string;
+    baseData?: { fileName: string };
+    visionParser: FormDataEntryValue | null;
+    visionParserModel: FormDataEntryValue | null;
+    visionParserApiKey: FormDataEntryValue | null;
+    visionParserApiUrl: FormDataEntryValue | null;
+    documentParser: FormDataEntryValue | null;
+    documentParserModel: FormDataEntryValue | null;
+    documentParserApiKey: FormDataEntryValue | null;
+}
+
+async function runParse(job: ParseJob) {
+    try {
+        const {data, pages, ocrResults} = await parseHealthData({
+            file: job.filePath,
+            visionParser: job.visionParser ? {
+                parser: job.visionParser as string,
+                model: job.visionParserModel as string,
+                apiKey: job.visionParserApiKey as string,
+                apiUrl: job.visionParserApiUrl ? job.visionParserApiUrl as string : undefined
+            } : undefined,
+            documentParser: job.documentParser ? {
+                parser: job.documentParser as string,
+                model: job.documentParserModel as string,
+                apiKey: job.documentParserApiKey as string
+            } : undefined
+        });
+
+        await prisma.healthData.update({
+            where: {id: job.id},
+            data: {
+                status: 'COMPLETED',
+                metadata: JSON.parse(JSON.stringify({ocr: ocrResults[0], dataPerPage: pages[0]})),
+                data: {...job.baseData, ...data[0]}
+            }
+        });
+    } catch (error) {
+        console.error('Error processing file:', error);
+        const parsingLogs: string[] = [`Error: ${error instanceof Error ? error.message : 'Unknown error'}`];
+        await prisma.healthData.update({
+            where: {id: job.id},
+            data: {
+                status: 'ERROR',
+                data: {...job.baseData, parsingLogs},
+            }
+        }).catch(() => {});
+    }
+}
+
 export async function POST(
     req: NextRequest
 ) {
@@ -125,7 +188,9 @@ export async function POST(
             }
         }
 
-        // Create parsing data
+        // Create the PARSING record immediately and return it. The actual
+        // (slow) parse runs in the background queue and updates this record,
+        // so the browser fetch returns instantly instead of timing out.
         let healthData;
         try {
             healthData = await prisma.healthData.create({
@@ -139,50 +204,25 @@ export async function POST(
                     authorId: session.user.id,
                 },
             });
-
-            // Process file
-            const {data, pages, ocrResults} = await parseHealthData({
-                file: filePath as string,
-                visionParser: visionParser ? {
-                    parser: visionParser as string,
-                    model: visionParserModel as string,
-                    apiKey: visionParserApiKey as string,
-                    apiUrl: visionParserApiUrl ? visionParserApiUrl as string : undefined
-                } : undefined,
-                documentParser: documentParser ? {
-                    parser: documentParser as string,
-                    model: documentParserModel as string,
-                    apiKey: documentParserApiKey as string
-                } : undefined
-            })
-
-            // Update health data with parsed data
-            healthData = await prisma.healthData.update({
-                where: {id: healthData.id},
-                data: {
-                    status: 'COMPLETED',
-                    metadata: JSON.parse(JSON.stringify({ocr: ocrResults[0], dataPerPage: pages[0]})),
-                    data: {...baseData, ...data[0]}
-                }
-            });
-            return NextResponse.json(healthData);
         } catch (error) {
-            console.error('Error processing file:', error);
-            const parsingLogs: string[] = []
-            parsingLogs.push(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-            // If there's an error, update the health data with error logs
-            if (healthData) {
-                healthData = await prisma.healthData.update({
-                    where: {id: healthData.id},
-                    data: {
-                        status: 'COMPLETED',
-                        data: {...baseData, parsingLogs},
-                    }
-                });
-                return NextResponse.json(healthData);
-            }
-            return NextResponse.json({error: 'Failed to process file'}, {status: 500});
+            console.error('Error creating parsing record:', error);
+            return NextResponse.json({error: 'Failed to create parsing record'}, {status: 500});
         }
+
+        enqueueParse(() => runParse({
+            id: healthData.id,
+            filePath: filePath as string,
+            baseData,
+            visionParser,
+            visionParserModel,
+            visionParserApiKey,
+            visionParserApiUrl,
+            documentParser,
+            documentParserModel,
+            documentParserApiKey,
+        }));
+
+        return NextResponse.json(healthData);
     }
 }
 
@@ -198,10 +238,30 @@ export async function GET() {
         })
     }
 
-    const healthDataList = await prisma.healthData.findMany({
+    let healthDataList = await prisma.healthData.findMany({
         where: {authorId: session.user.id},
         orderBy: {createdAt: 'asc'}
     })
+
+    // Order by the extracted examination date (data.date, yyyy-mm-dd) ascending
+    // so bloodwork reads chronologically regardless of upload order or file name.
+    // Items with no usable date keep their upload order (stable sort) and land
+    // after the dated ones.
+    const examTime = (raw: unknown): number | null => {
+        const s = (raw as { date?: unknown } | null)?.date;
+        if (typeof s !== 'string' || !s) return null;
+        const t = Date.parse(s.length >= 10 ? s.slice(0, 10) : s);
+        return Number.isNaN(t) ? null : t;
+    };
+    healthDataList = [...healthDataList].sort((a, b) => {
+        const ta = examTime(a.data);
+        const tb = examTime(b.data);
+        if (ta && tb) return ta - tb;
+        if (ta) return -1;
+        if (tb) return 1;
+        return 0;
+    });
+
     return NextResponse.json<HealthDataListResponse>({
         healthDataList: healthDataList
     })

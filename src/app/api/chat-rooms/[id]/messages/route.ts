@@ -88,9 +88,9 @@ export async function POST(
         }
     })
 
-    let apiKey: string
+    let apiKey = ''
     if (currentDeploymentEnv === 'local') {
-        apiKey = decrypt(llmProvider.apiKey)
+        try { apiKey = decrypt(llmProvider.apiKey) } catch { apiKey = '' }
     } else if (currentDeploymentEnv === 'cloud') {
         switch (llmProvider.providerId) {
             case 'openai':
@@ -108,6 +108,10 @@ export async function POST(
             default:
                 throw new Error('Unsupported LLM provider');
         }
+    }
+    // ZAI: prefer the API key from .env so it does not have to be entered in-app.
+    if (llmProvider.providerId === 'zai' && process.env.ZAI_API_KEY) {
+        apiKey = process.env.ZAI_API_KEY as string
     }
 
     const messages = [

@@ -75,12 +75,15 @@ export async function POST() {
             where: {authorId: user.id}
         })).id;
 
+        const zaiProvider = await prisma.lLMProvider.findFirst({where: {authorId: user.id, providerId: 'zai'}});
+        const defaultProvider = zaiProvider ?? await prisma.lLMProvider.findFirstOrThrow({where: {authorId: user.id}});
         return prisma.chatRoom.create({
             data: {
                 authorId: user.id,
                 name: 'New Chat',
                 assistantModeId: assistantModeId,
-                llmProviderId: (await prisma.lLMProvider.findFirstOrThrow({where: {authorId: user.id}})).id,
+                llmProviderId: defaultProvider.id,
+                llmProviderModelId: defaultProvider.providerId === 'zai' ? 'glm-5.2' : undefined,
             },
         });
     });
