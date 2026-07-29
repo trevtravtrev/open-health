@@ -46,3 +46,4 @@ public/uploads/*
 
 .trigger
 server.log
+open-health-launcher.log

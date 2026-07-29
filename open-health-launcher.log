@@ -1,8 +1,0 @@
-[Tue 07/28/2026 17:27:31.61] OpenHealth launcher starting
-[1/4] Docker is ready
-[2/4] Starting database and Docling...
-[2/4] Database and Docling are ready
-[3/4] Starting app, first launch compiles in ~15s...
-[3/4] App is ready
-[4/4] Opening http://localhost:3000
-[Tue 07/28/2026 17:27:36.11] Done.
