@@ -254,9 +254,17 @@ export async function GET() {
         return Number.isNaN(t) ? null : t;
     };
     healthDataList = [...healthDataList].sort((a, b) => {
+        // Personal info is static — always pin it to the top.
+        const aPersonal = a.type === 'PERSONAL_INFO';
+        const bPersonal = b.type === 'PERSONAL_INFO';
+        if (aPersonal && !bPersonal) return -1;
+        if (bPersonal && !aPersonal) return 1;
+
+        // Everything else: most recent examination date first (descending).
+        // Dated items come before undated ones; undated keep upload order.
         const ta = examTime(a.data);
         const tb = examTime(b.data);
-        if (ta && tb) return ta - tb;
+        if (ta && tb) return tb - ta;
         if (ta) return -1;
         if (tb) return 1;
         return 0;

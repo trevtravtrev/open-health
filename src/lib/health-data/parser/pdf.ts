@@ -113,7 +113,7 @@ async function inference(inferenceOptions: InferenceOptions) {
             const {markdown} = content
             return {page_content: markdown}
         },
-        2
+        1
     ) : undefined
 
     // Extract image data if not excluding images
@@ -199,14 +199,13 @@ async function inference(inferenceOptions: InferenceOptions) {
 
     let mergeData: any = {}
 
-    // Merge name and date
+    // Merge name and date — prefer the FIRST non-null value across pages. A
+    // date printed only on page 1 must not be overwritten by page N's null.
     for (let i = 0; i < numPages; i++) {
         const healthCheckup = data[`page_${i}`]
         if (!healthCheckup) continue
-        mergeData = {
-            ...mergeData,
-            ...healthCheckup,
-        }
+        if (mergeData.date == null && healthCheckup.date) mergeData.date = healthCheckup.date
+        if (mergeData.name == null && healthCheckup.name) mergeData.name = healthCheckup.name
     }
 
     // test_result + page map (free-form, deduped by name)
@@ -249,14 +248,17 @@ async function documentToImages({file: filePath}: Pick<SourceParseOptions, 'file
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             let bulkResult: any[] = []
             let lastErr: unknown
-            for (let attempt = 0; attempt < 3; attempt++) {
+            for (let attempt = 0; attempt < 5; attempt++) {
                 try {
                     bulkResult = await pdf2picConverter.bulk(-1, {responseType: 'base64'})
                     lastErr = null
                     break
                 } catch (e) {
                     lastErr = e
-                    if (attempt < 2) await new Promise(r => setTimeout(r, 2000))
+                    // pdf2pic reports "gm binaries can't be found" for ANY gm
+                    // subprocess/pipe failure, including transient ones under load.
+                    // Back off (3s,6s,9s,12s) and retry.
+                    if (attempt < 4) await new Promise(r => setTimeout(r, 3000 * (attempt + 1)))
                 }
             }
             if (lastErr) throw lastErr
@@ -333,7 +335,7 @@ export async function parseHealthData(options: SourceParseOptions) {
     await processBatchWithConcurrency(
         imagePaths,
         async (path) => documentParse({document: path, documentParser: documentParser}),
-        3
+        2
     )
 
     // Merge the results
@@ -379,6 +381,8 @@ export async function parseHealthData(options: SourceParseOptions) {
 
     const healthCheckup = HealthCheckupSchema.parse({
         ...resultTotal,
+        date: resultTotal.date ?? resultText.date ?? resultImage.date ?? null,
+        name: resultTotal.name ?? resultText.name ?? resultImage.name ?? null,
         test_result: mergedTestResult,
     })
 

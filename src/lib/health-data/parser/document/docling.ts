@@ -30,7 +30,7 @@ async function resolveInputBuffer(input: string): Promise<Buffer> {
 // drops connections ("socket hang up" / "write EOF") under concurrent request bursts, so
 // each attempt rebuilds the FormData (the input Buffer is reusable) and retries a few times.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function doclingConvert(buildFormData: () => FormData, attempts = 3): Promise<any> {
+async function doclingConvert(buildFormData: () => FormData, attempts = 5): Promise<any> {
     let lastErr: unknown;
     for (let attempt = 0; attempt < attempts; attempt++) {
         try {
@@ -44,7 +44,9 @@ async function doclingConvert(buildFormData: () => FormData, attempts = 3): Prom
             return await res.json();
         } catch (e) {
             lastErr = e;
-            if (attempt < attempts - 1) await new Promise(r => setTimeout(r, 3000 * (attempt + 1)));
+            // Longer backoff (4s,8s,12s,16s) to outlast transient "write EOF" /
+            // socket drops when many parses hit docling-serve at once.
+            if (attempt < attempts - 1) await new Promise(r => setTimeout(r, Math.min(30000, 4000 * (attempt + 1))));
         }
     }
     throw lastErr;

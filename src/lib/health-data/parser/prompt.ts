@@ -24,6 +24,16 @@ A test value MUST ALWAYS be an object, NEVER a bare string or number.
   CORRECT: "Ferritin": {{"value": "27.4", "unit": "ng/mL", "reference_range": "30-400", "abnormal": false}}
   WRONG:   "Ferritin": "27.4"
 
+=== DATE — always normalize to yyyy-mm-dd ===
+Find the examination / collection / report date printed anywhere on the page and return it as a string in EXACTLY "yyyy-mm-dd" form. Normalize every printed format to ISO:
+  "07/23/2026" or "7/23/26"     -> "2026-07-23"
+  "July 23, 2026"               -> "2026-07-23"
+  "23-Jul-2026" / "23JUL2026"   -> "2026-07-23"
+  "2026.07.23"                  -> "2026-07-23"
+  "23/07/2026" (day-first)      -> "2026-07-23"
+  "2026년 7월 23일"              -> "2026-07-23"
+Prefer the blood-collection / report date over a print timestamp or date of birth. Zero-pad month and day. If NO date appears anywhere on the page, use null.
+
 === KEY RULE: USE THE EXACT PRINTED NAME ===
 Do NOT translate, normalize, abbreviate, or "correct" test names. Do NOT map a test to a different but similar-sounding name. Use the key exactly as the report prints it.
   Printed "QuantiFERON-TB Gold"   -> key "QuantiFERON-TB Gold"   (it is a tuberculosis test; NOT "HIV", NOT "hiv", NOT "TB test")
